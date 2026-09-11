@@ -1,0 +1,24 @@
+# LaTeX
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.bbl
+*.blg
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# C++
+build/
+*.o
+*.exe
+
+# OS
+.DS_Store
