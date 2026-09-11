@@ -1,13 +1,36 @@
-% Общий преамбул для отчётов по лабораторным работам
-% Подключается командой \input{../../common/latex_template/preamble.tex}
-\usepackage[utf8]{inputenc}
-\usepackage[english,russian]{babel}
+% ============================================================
+% Общий преамбул для отчётов по лабораторным работам (labs_lpr)
+% Подключается из report/main.tex командой:
+%   \input{../../common/latex_template/preamble.tex}
+% ============================================================
+
+% Поддержка русского языка и кодировки
 \usepackage[T2A]{fontenc}
-\usepackage{amsmath,amssymb}
-\usepackage{graphicx}
-\usepackage{siunitx}
-\usepackage{booktabs}
-\usepackage{caption}
+\usepackage[utf8]{inputenc}
+\usepackage[russian]{babel}
+
+% Математические пакеты
+\usepackage{amsmath, amssymb}
+
+% Настройка полей
 \usepackage{geometry}
-\geometry{a4paper, margin=2cm}
-\usepackage{hyperref}
+\geometry{top=2cm, bottom=2cm, left=2.5cm, right=1.5cm}
+
+% Колонтитулы
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+
+% Современные таблицы
+\usepackage{tabularray}
+
+% Работа с csv файлами
+\usepackage{csvsimple-l3}
+\usepackage{tikz}
+
+% Графики
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+% Ссылки
+% \usepackage{hyperref} % гипперссылки, нужно оформление вместо красного квадрата
+\usepackage[russian]{cleveref} % умные ссылки, нужно переоформление для формул, рисунков и тд (вместо ф-л что-то нужно придумать)

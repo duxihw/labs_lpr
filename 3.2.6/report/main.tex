@@ -1,0 +1,406 @@
+\documentclass[a4paper,12pt]{article}
+
+\input{../../common/latex_template/preamble.tex}
+
+% Настройка колонтитулов
+\pagestyle{fancy}
+\fancyhf{}
+% Верхний левый: логотип (если файла нет, выводится текст)
+\fancyhead[L]{%
+    \IfFileExists{../../common/latex_template/miptlogo.png}{%
+        \includegraphics[height=1cm]{../../common/latex_template/miptlogo.png}%
+    }{%
+        \textbf{[ЛОГОТИП МФТИ]}%
+    }%
+}
+% Верхний правый: инициалы
+\fancyhead[R]{\textbf{Емельянов ДА, Байдин ФМ}}
+% Нижний центральный: номер страницы
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\begin{document}
+
+% --- ТИТУЛЬНЫЙ ЛИСТ ---
+\begin{titlepage}
+\begin{center}
+    {\large МОСКОВСКИЙ ФИЗИКО-ТЕХНИЧЕСКИЙ ИНСТИТУТ}
+\end{center}
+\begin{center}
+    {\largeФизтех-школа физики и исследований им. Ландау\break ЛФИ}
+\end{center}
+
+
+    \vspace{3cm}
+
+\begin{center}
+   
+\end{center}
+\vspace{0.15cm}
+{
+\begin{center}
+    \huge \bf Лабораторная работа №3.2.6 по курсу Общая физика\\
+    \vspace{0.4cm}      
+    \LARGE Изучение гальванометра.
+\end{center}
+}
+\vspace{1.5cm}
+\begin{flushright}  
+Емельянов Дмитрий Алексеевич\\
+Байдин Фаддей Михайлович\\
+\vspace{0.4cm}
+Б02-502
+\end{flushright}
+\vspace{10cm}
+\begin{center}
+    \large 8 сентября 2026, г. Долгопрудный
+\end{center}
+\end{titlepage}
+% ----------------------
+
+\section{Аннотация}
+В данной работе проводится изучение работы высокочувствительного зеркального гальванометра магнитоэлектрической системы. Исследуются два режима работы прибора: режим измерения постоянного тока (стационарный) и режим измерения электрического заряда (баллистический). Определяются ключевые характеристики гальванометра: динамическая постоянная, баллистическая постоянная и критическое сопротивление цепи.
+
+\section{Теоретические сведения}
+Уравнение движения рамки гальванометра в магнитном поле имеет вид:
+\begin{equation}
+    \label{eq:motion}
+    \ddot{\varphi} + 2\gamma\dot{\varphi} + \omega_0^2\varphi = KI,
+\end{equation}
+где $\varphi$ --- угол поворота рамки, $\gamma$ --- коэффициент затухания, $\omega_0$ --- собственная частота колебаний, $K$ --- коэффициент, зависящий от параметров гальванометра.
+
+В стационарном режиме при пропускании постоянного тока $I$ угол поворота $\varphi$ связан с током через динамическую постоянную $C_I$:
+\begin{equation}
+    \label{eq:ci_def}
+    C_I = \frac{I}{\varphi} = \frac{2aI}{x},
+\end{equation}
+где $a$ --- расстояние от шкалы до зеркальца, $x$ --- координата светового пятна на шкале. 
+
+Сила тока в цепи рассчитывается по формуле:
+\begin{equation}
+    \label{eq:current}
+    I = \frac{R_1}{R_2}\frac{U_0}{R+R_0},
+\end{equation}
+где $U_0$ --- показания вольтметра, $R_1/R_2$ --- положение делителя, $R$ --- сопротивление магазина, $R_0$ --- внутреннее сопротивление гальванометра.
+
+Для режима свободных затухающих колебаний логарифмический декремент затухания $\Theta$ равен:
+\begin{equation}
+    \label{eq:decrement}
+    \Theta = \ln\frac{x_n}{x_{n+1}},
+\end{equation}
+где $x_n$ и $x_{n+1}$ --- два последовательных отклонения зайчика в одну сторону.
+
+Критическое сопротивление цепи гальванометра $R_{kp}$ связано с $\Theta$ следующим образом:
+\begin{equation}
+    \label{eq:rkp_formula}
+    R_{kp} = \frac{R+R_0}{\sqrt{\left(\frac{2\pi}{\Theta}\right)^2+1}} - R_0.
+\end{equation}
+
+В баллистическом режиме через гальванометр пропускается заряд $q = C U_C$. Баллистическая постоянная в критическом режиме равна:
+\begin{equation}
+    \label{eq:cq}
+    C_q^{kp} = \frac{q}{\varphi_{max}^{kp}} = 2a\frac{R_1}{R_2}\frac{C U_0}{x_{max}^{kp}}.
+\end{equation}
+
+\section{Используемое оборудование}
+\begin{itemize}
+    \item Зеркальный гальванометр с осветителем и шкалой;
+    \item Источник постоянного напряжения;
+    \item Делитель напряжения;
+    \item Магазин сопротивлений;
+    \item Эталонный конденсатор;
+    \item Вольтметр;
+    \item Переключатель, ключи, линейка.
+\end{itemize}
+
+\section{Методика измерений}
+Измерения проводятся в двух конфигурациях цепи. Для стационарного режима используется подключение гальванометра к делителю напряжения. Регулировка сопротивления магазина $R$ позволяет изменять ток в цепи и переводить гальванометр из колебательного режима в апериодический. Измеряя отклонения зайчика, можно рассчитать динамическую постоянную по формуле \cref{eq:ci_def}.
+
+В баллистическом режиме цепь содержит эталонный конденсатор $C$, который заряжается от источника и затем разряжается через гальванометр, сообщая ему короткий импульс тока. Первый максимальный отброс $x_{max}$ используется для определения баллистической постоянной $C_q^{kp}$ согласно \cref{eq:cq}.
+
+\section{Результаты измерений и обработка данных}
+
+\subsection{Параметры экспериментальной установки}
+\begin{itemize}
+    \item Внутреннее сопротивление гальванометра: $R_0 = 560$ Ом;
+    \item Напряжение источника: $U_0 = \frac{67}{150}\cdot3\text{ В}\approx1,34$ В;
+    \item Расстояние от зеркальца до шкалы: $a = 0,98$ м;
+    \item Положение делителя напряжения: $R_1/R_2 = 1 / 2000$;
+    \item Ёмкость эталонного конденсатора: $C = 2$ мкФ.
+\end{itemize}
+
+\subsection{Определение динамической постоянной (стационарный режим)}
+
+Результаты измерений отклонения зайчика в зависимости от сопротивления магазина представлены в \cref{tab:stationary_data}. Сила тока $I$ рассчитана по формуле \cref{eq:current}.
+
+\begin{table}[!ht]
+    \centering
+    \caption{Измерения в стационарном режиме}
+    \label{tab:stationary_data}
+
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|c|c|},
+            hlines,
+            vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {
+            \textbf{$R$, кОм}
+            &
+            \textbf{$x$, см}
+            &
+            \textbf{$\sigma_x$, см}
+            &
+            \textbf{$I$, мкА}
+            &
+            \textbf{$\sigma_I$, мкА}
+            \\
+        }
+    ]%
+    {../data/raw/data_stationary.csv}%
+    {x=\csvX, sigma_x=\csvSigmaX, R=\csvR, I=\csvI, sigma_I=\csvSigmaI}%
+    {%
+        $\csvR$
+        &
+        $\csvX$
+        &
+        $\csvSigmaX$
+        &
+        $\csvI$
+        &
+        $\csvSigmaI$
+    }
+
+\end{table}
+
+На основе данных из \cref{tab:stationary_data}
+построен график зависимости $I(x)$ с учётом погрешностей измерений
+(\cref{fig:ix_graph}).
+
+\begin{figure}[!ht]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            width=0.8\textwidth,
+            height=0.5\textwidth,
+            xlabel={$x$, cм},
+            ylabel={$I$, мкА},
+            enlarge x limits=0,
+            enlarge y limits=0,
+            grid=both,
+            legend pos=north west,
+        ]
+
+            \addplot[
+                only marks,
+                mark=*,
+                /pgfplots/error bars/x dir=both,
+                /pgfplots/error bars/x explicit,
+                /pgfplots/error bars/y dir=both,
+                /pgfplots/error bars/y explicit,
+            ]
+            table[
+                col sep=comma,
+                x=x,
+                y=I,
+                x error=sigma_x,
+                y error=sigma_I,
+            ] {../data/raw/data_stationary.csv};
+
+            \addlegendentry{Экспериментальные данные}
+
+            % Линейная аппроксимация
+            \addplot[
+                no marks,
+                domain=0:25,
+                thick
+            ] {0.0051 * x + 0.0017};
+
+            \addlegendentry{Линейная аппроксимация}
+            
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Зависимость силы тока от отклонения зайчика}
+    \label{fig:ix_graph}
+\end{figure}
+
+По угловому коэффициенту линейной аппроксимации рассчитываем динамическую постоянную:
+\begin{equation}
+    C_I = 1,005\cdot10^{-9} \text{ А/(мм/м)}.
+\end{equation}
+Чувствительность гальванометра к току $S_I = 1/C_I = 995\cdot10^6$ (мм/м)/А.
+
+\subsection{Определение критического сопротивления}
+
+Период свободных колебаний рамки $T_0 = 4,64$ с.
+Логарифмический декремент затухания разомкнутого гальванометра $\Theta_0 = 0,249$.
+
+Измерения последовательных отклонений и рассчитанный логарифмический декремент затухания $\Theta$ по формуле \cref{eq:decrement} представлены в \cref{tab:decrement_data}. Столбец $R_{kp}$ рассчитан скриптом \texttt{scripts/process\_data.py} из сырых данных \texttt{data/raw/data\_table.csv} и сохранён в \texttt{data/processed/data\_table.csv}.
+
+\begin{table}[ht]
+    \centering
+    \caption{Определение декремента затухания}
+    \label{tab:decrement_data}
+
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|c|c|},
+            hlines,
+            vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {
+            \textbf{$R$, кОм}
+            &
+            \textbf{$x_n$, см}
+            &
+            \textbf{$x_{n+1}$, см}
+            &
+            \textbf{$\Theta$}
+            &
+            \textbf{$R_{kp}$, кОм}
+            \\
+        }
+    ]%
+    {../data/processed/data_table.csv}%
+    {R=\csvR, x1=\csvXn, x2=\csvXnp, Theta=\csvTheta, R_cr=\csvRcr}%
+    {%
+        $\csvR$
+        &
+        $\csvXn$
+        &
+        $\csvXnp$
+        &
+        $\csvTheta$
+        &
+        $\csvRcr$
+    }
+
+\end{table}
+
+Критическое сопротивление, полученное путём подбора (когда зайчик не переходит за ноль): $R_{kp}^{(\textrm{подбор})} = 7,5\pm0,1$ кОм.
+
+Усредненное значение критического сопротивления по результатам расчётов (\cref{eq:rkp_formula}):
+\begin{equation}
+    R_{kp} = 8.280 \pm 0.648 \text{ кОм}.
+\end{equation}
+
+\subsection{Баллистический режим}
+
+Отброс зайчика в режиме свободных колебаний ($R = \infty$): $x_0 = 245$ мм. При $R_1/R_2 = 1/50$. Зафиксируем $R_1/R_2$ для баллистического режима.
+Максимальный отброс гальванометра без затухания: 
+\begin{equation}
+    x_{max}^{cB} = x_0 \left(1 + \frac{\Theta_0}{4}\right) = 260 \text{ мм}.
+\end{equation}
+
+Результаты измерения первого отброса $x_{max}$ при различных сопротивлениях $R$ приведены в \cref{tab:ballistic_data}.
+
+\begin{table}[ht]
+    \centering
+    \caption{Измерения в баллистическом режиме}
+    \label{tab:ballistic_data}
+
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|c|},
+            hlines,
+            vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {
+            \textbf{$R$, кОм}
+            &
+            \textbf{$R+R_0$, кОм}
+            &
+            \textbf{$x_{max}$, см}
+            &
+            \textbf{$\sigma_{x_{max}}$, см}
+            \\
+        }
+    ]%
+    {../data/raw/ballistic_mode_data.csv}%
+    {1=\csvR, 2=\csvXmax, 3=\csvSigmaXmax, 4=\csvRtotal}%
+    {%
+        $\csvR$
+        &
+        $\csvRtotal$
+        &
+        $\csvXmax$
+        &
+        $\csvSigmaXmax$
+    }
+
+\end{table}
+
+\begin{figure}[!ht]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            width=0.8\textwidth,
+            height=0.5\textwidth,
+            xlabel={$R+R_0$, кОм},
+            ylabel={$x_{max}$, см},
+            enlarge x limits=0.05,
+            enlarge y limits=0.05,
+            grid=both,
+            legend pos=south east,
+        ]
+
+            \addplot[
+                only marks,
+                mark=*,
+                /pgfplots/error bars/y dir=both,
+                /pgfplots/error bars/y explicit,
+            ]
+            table[
+                col sep=comma,
+                x index=3,
+                y index=1,
+                y error index=2,
+            ] {../data/raw/ballistic_mode_data.csv};
+
+            \addlegendentry{Экспериментальные данные}
+
+            \addplot[no marks, domain=3:15, thick] {9.565};
+            
+            \addlegendentry{$x_{max}^{kp} = x_{max}^{cB}/e \approx 9.6$ см}
+
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Зависимость первого отброса от суммарного сопротивления}
+    \label{fig:ballistic_graph}
+\end{figure}
+
+По графику (\cref{fig:ballistic_graph}) определяем $R_{kp}$, при котором $x_{max}$ в $e$ раз меньше $x_{max}^{cB}$:
+\begin{equation}
+    R_{kp}^{(\text{балл})} = 6,2 \text{ кОм}.
+\end{equation}
+
+Расчёт баллистической постоянной в критическом режиме (\cref{eq:cq}):
+\begin{equation}
+    C_q^{kp} = 1,094\cdot10^{-9} \text{ Кл/(мм/м)}.
+\end{equation}
+
+Время релаксации цепи $\tau = R_0 C = 1,12$ мс.
+В сравнении с $T_0 = 4,64$ с: $\tau \ll T_0$, что подтверждает применимость баллистического режима.
+
+\section{Обзор результатов}
+Критическое сопротивление было определено тремя способами:
+1. Подбором: $R_{kp} = 7,5$ кОм;
+2. По логарифмическому декременту затухания: $R_{kp} = 8,3$ кОм;
+3. В баллистическом режиме: $R_{kp} = 6,2$ кОм.
+
+Результаты эксперимента приблизительно сходятся с ожидаемыми значениями. Зависимость $I(x)$ в исследованном диапазоне близка к линейной, что соответствует предположениям модели. Основной вклад в погрешность вносят погрешности измерения $x$ и $I$.
+
+\section{Заключение}
+В ходе работы был исследован высокочувствительный зеркальный гальванометр. 
+Определены его основные характеристики:
+\begin{itemize}
+    \item Динамическая постоянная: $C_I = 1,005\cdot10^{-9}$ А/(мм/м);
+    \item Баллистическая постоянная: $C_q^{kp} = 1,094\cdot10^{-9}$ Кл/(мм/м);
+    \item Критическое сопротивление: $R_{kp} \approx 7,3$ кОм.
+\end{itemize}
+Показано, что шкала гальванометра обладает высокой степенью линейности, а условие баллистического режима ($\tau \ll T_0$) строго выполняется.
+
+\end{document}
