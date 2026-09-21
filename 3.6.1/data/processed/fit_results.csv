@@ -1,0 +1,6 @@
+quantity,value,sigma,unit,comment
+k_Dnu (наклон Dnu(1/tau)),,,,
+k_dnu (наклон dnu(1/T)),,,,
+Dnu*tau (гауссианы),,,,
+k_AM (a_бок/a_осн = k*m),,,,
+tau_RC (по графику 1/K^2(nu^2)),,,мкс,
