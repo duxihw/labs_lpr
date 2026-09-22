@@ -1,6 +1,7 @@
 # 3.6.1 — Спектральный анализ электрических сигналов
 
-Заготовка работы: отчёт, скрипты обработки и пустые таблицы под данные.
+Отчёт, данные измерений и скрипты обработки. Выполнены части А, Б, Г;
+часть Е (RC-фильтр) --- только качественно (осциллограмма и спектр).
 Структура повторяет остальные работы репозитория `labs_lpr/`.
 
 ```
@@ -35,13 +36,10 @@
    (наклоны МНК с погрешностями, `tau_RC`, произведения `Δν·τ`) и дублирует
    их в `data/processed/fit_results.csv` — оттуда числа переносятся в отчёт
    вместо меток `???`.
-3. Скриншоты осциллографа сложить в `report/img/` под именами, которые
-   ожидает `main.tex`:
-   `signal_rect.png`, `spectrum_rect.png`, `spectrum_rect_1..4.png`,
-   `spectrum_burst_1..2.png`, `spectrum_gauss_1..2.png`,
-   `filter_signal_1..2.png`.
-   Пока файла нет, на его месте в PDF рисуется рамка-заглушка — отчёт
-   собирается в любом случае.
+3. Скриншоты осциллографа лежат в `report/img/`:
+   `spectrum_rect_nu1..4.png`, `spectrum_rect_tau100/200/250.png` (часть А),
+   `spectrum_burst_*.png` (часть Б), `spectrum_am*.png` (часть Г),
+   `filter_signal.png`, `filter_spectrum.png` (часть Е).
 4. Сборка отчёта:
 
    ```bash
@@ -56,27 +54,22 @@
 - Таблицы и графики читаются напрямую из `../data/processed/*.csv`
   (`csvsimple-l3` + `pgfplots`), поэтому после перезапуска обработки
   достаточно пересобрать PDF.
-- Метки `???` и `?? НЕОБХОДИМО ЗАПОЛНИТЬ ??` — места под числа и выводы.
-- В графиках pgfplots коэффициенты аппроксимирующих прямых пока заданы
-  теоретическими значениями (`1.0*x`, `0.5*x`, `tau_RC = 0.010` мс);
-  рядом стоит комментарий `% ???` — подставить значения из МНК.
+- Коэффициенты МНК-прямых на графиках pgfplots взяты из
+  `data/processed/fit_results.csv`; при изменении данных их нужно обновить.
 - При первой сборке стоит просмотреть лог: часть подписей содержит
   кириллицу внутри математического режима (`$a_{\text{бок}}$`), и при
   другой преамбуле может потребоваться `\text{}`/`\mathrm{}`.
 
 ## Форматы сырых таблиц
 
-| файл | пункт задания | столбцы |
+| файл | часть | столбцы |
 |---|---|---|
 | `setup_params.csv` | — | `param,value,sigma,unit,comment` |
-| `harmonics.csv` | 7 | `n,nu_exp_kHz,sigma_nu_kHz,a_exp_mV,sigma_a_mV` |
-| `spectrum_width.csv` | 8 | `tau_us,sigma_tau_us,Dnu_kHz,sigma_Dnu_kHz` |
-| `harmonics_spacing.csv` | 9 | `T_ms,sigma_T_ms,m,nu_n_kHz,nu_nm_kHz,sigma_nu_kHz` |
-| `bursts.csv` | 13–14 | `nu0_kHz,T_ms,N,nu_center_kHz,...,Dnu_kHz,...,dnu_kHz,...` |
-| `gauss.csv` | 17 | `nu0_kHz,T_ms,tau_ms,sigma_tau_ms,Dnu_kHz,sigma_Dnu_kHz` |
-| `am_modulation.csv` | 20–23 | `m_set_percent,A_max_V,A_min_V,sigma_A_V,a_main_mV,a_side_mV,sigma_a_mV` |
-| `pm_modulation.csv` | 24–25 | `phi_m_deg,nu0_kHz,nu_mod_kHz,a_main_mV,a_side1_mV,a_side2_mV,sigma_a_mV` |
-| `filter.csv` | 28–29 | `n,nu_kHz,sigma_nu_kHz,a_filt_mV,a_orig_mV,sigma_a_mV` |
+| `harmonics.csv` | А | `n,nu_exp_kHz,a_exp_mV` |
+| `spectrum_width.csv` | А | `tau_us,Dnu_kHz` |
+| `harmonics_spacing.csv` | А | `nu_rep_kHz,dnu_kHz` |
+| `bursts.csv` | Б | `series,nu0_kHz,T_ms,N,dnu_kHz,Dnu_kHz` |
+| `am_modulation.csv` | Г | `m_set_percent,a_side_mV` |
 
 Единицы подобраны так, чтобы формулы были «безразмерными»:
 кГц × мс = 1, кГц × мкс = 10⁻³.
