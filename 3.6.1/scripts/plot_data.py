@@ -25,7 +25,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
-from lab_utils import FIG_DIR, PROC_DIR, get_param, lsq, lsq_origin, read_params  # noqa: E402
+from lab_utils import FIG_DIR, PROC_DIR  # noqa: E402
 
 # --------------------------------------------------------------------------
 # Стиль «как в LaTeX»
@@ -91,8 +91,7 @@ def load(name: str) -> pd.DataFrame:
     path = PROC_DIR / name
     if not path.exists():
         return pd.DataFrame()
-    df = pd.read_csv(path)
-    return df.dropna(how="all")
+    return pd.read_csv(path, sep=";").dropna(how="all")
 
 
 def save(fig, name: str) -> None:
@@ -102,97 +101,116 @@ def save(fig, name: str) -> None:
     print(f"  -> report/img/{name}")
 
 
-def skip(name: str) -> None:
-    print(f"  [-] {name}: нет данных, график не построен")
+def result(name: str) -> float:
+    """Число из fit_results.csv по началу названия величины."""
+    df = load("fit_results.csv")
+    row = df[df["quantity"].str.startswith(name)]
+    return float(row["value"].iloc[0])
 
 
 # --------------------------------------------------------------------------
-def plot_harmonics(params: dict) -> None:
-    """Относительные амплитуды гармоник и теоретическая огибающая sinc."""
+def plot_harmonics() -> None:
+    """Относительные амплитуды гармоник (T = 1 мс, tau = 50 мкс) и огибающая sinc."""
     df = load("harmonics_processed.csv")
-    if df.empty:
-        return skip("гармоники")
-
-    T_ms = get_param(params, "T_rect", 1.0)
-    tau_us = get_param(params, "tau_rect", 50.0)
-    tau_ms = tau_us / 1000.0
-
     fig, ax = plt.subplots()
-    nu = df["nu_exp_kHz"].to_numpy(dtype=float)
-    ax.errorbar(nu, df["ratio_exp"], yerr=df.get("sigma_ratio_exp"), **MARK)
-
-    # огибающая |sinc(pi*nu*tau)| / |sinc(pi*tau/T)|, нормированная на первую гармонику
-    nu_grid = np.linspace(0, np.nanmax(nu) * 1.05, 600)
-    q = np.pi * tau_ms
-    norm = abs(np.sin(np.pi * tau_ms / T_ms) / (np.pi * tau_ms / T_ms))
-    with np.errstate(invalid="ignore", divide="ignore"):
-        env = np.abs(np.sin(q * nu_grid) / (q * nu_grid)) / norm
-    env[0] = 1 / norm
-    ax.plot(nu_grid, env, color="crimson", lw=0.9,
-            label=r"теория: $|\mathrm{sinc}(\pi\nu\tau)|$")
-
+    ax.plot(df["nu_exp_kHz"], df["ratio_exp"], "o", color="#1f4e79", label="Эксперимент")
+    nu = np.linspace(0.01, 21, 500)
+    env = np.abs(np.sinc(nu * 0.05)) / np.sinc(0.05)
+    ax.plot(nu, env, color="crimson", label=r"$|\mathrm{sinc}(\pi\nu\tau)|$, $\tau=50$ мкс")
     ax.set_xlabel(r"$\nu$, кГц")
-    ax.set_ylabel(r"$|a_n/a_1|$, отн. ед.")
-    ax.set_xlim(left=0)
-    ax.set_ylim(bottom=0)
+    ax.set_ylabel(r"$|a_n/a_1|$")
+    ax.set_xlim(0, 21)
+    ax.set_ylim(0, 1.05)
     ax.legend()
-    ax.set_title(rf"Спектр прямоугольных импульсов, $T={T_ms:g}$ мс, $\tau={tau_us:g}$ мкс")
     save(fig, "fig_harmonics.pdf")
 
 
-def plot_line(name: str, xcol: str, ycol: str, sxcol: str, sycol: str,
-              xlabel: str, ylabel: str, title: str, outfile: str,
-              theory_k: float | None = None, theory_label: str = "") -> None:
-    """Общий график линейной зависимости с МНК-аппроксимацией."""
-    df = load(name)
-    if df.empty:
-        return skip(outfile)
-
-    x = df[xcol].to_numpy(dtype=float)
-    y = df[ycol].to_numpy(dtype=float)
-
+def plot_meander() -> None:
+    df = load("meander_processed.csv")
     fig, ax = plt.subplots()
-    ax.errorbar(x, y, xerr=df.get(sxcol), yerr=df.get(sycol), **MARK)
-
-    k0, sk0 = lsq_origin(x, y)
-    k, sk, b, sb = lsq(x, y)
-    xx = np.linspace(0, np.nanmax(x) * 1.05, 100)
-    if np.isfinite(k0):
-        ax.plot(xx, k0 * xx, color="#c00000", lw=1.0,
-                label=rf"МНК: $k={k0:.3f}\pm{sk0:.3f}$")
-    if np.isfinite(k):
-        ax.plot(xx, k * xx + b, color="#c00000", lw=0.8, ls="-.",
-                label=rf"МНК: $k={k:.3f}\pm{sk:.3f}$, $b={b:.3f}$")
-    if theory_k is not None:
-        ax.plot(xx, theory_k * xx, color="k", lw=0.8, ls="--", label=theory_label)
-
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    ax.set_xlim(left=0)
-    ax.set_ylim(bottom=0)
+    for nu1, mk in [(50, "o"), (100, "s")]:
+        d = df[df["nu1_kHz"] == nu1]
+        ax.plot(d["inv_n"], d["ratio"], mk, mfc="none", label=rf"$\nu_1={nu1}$ кГц")
+    ax.plot([0, 1.05], [0, 1.05], "k--", lw=0.8, label=r"теория: $1/n$")
+    ax.set_xlabel(r"$1/n$")
+    ax.set_ylabel(r"$|a_n/a_1|$")
+    ax.set_xlim(0, 1.05)
+    ax.set_ylim(0, 1.05)
     ax.legend()
-    ax.set_title(title)
-    save(fig, outfile)
+    save(fig, "fig_meander.pdf")
+
+
+def plot_width() -> None:
+    df = load("spectrum_width_processed.csv")
+    k = result("k_Dnu (взвеш")
+    fig, ax = plt.subplots()
+    ax.errorbar(df["x"], df["y"], yerr=df["ey"], **MARK)
+    xx = np.linspace(0, 55, 10)
+    ax.plot(xx, k * xx, color="crimson", label=rf"МНК: $k={k:.3f}$")
+    ax.set_xlabel(r"$1/\tau$, кГц")
+    ax.set_ylabel(r"$\Delta\nu$, кГц")
+    ax.set_xlim(0, 55)
+    ax.set_ylim(0, 55)
+    ax.legend()
+    save(fig, "fig_width.pdf")
+
+
+def plot_spacing() -> None:
+    df = load("harmonics_spacing_processed.csv")
+    df = df[df["use"] == 1]
+    k = result("k_dnu (МНК")
+    fig, ax = plt.subplots()
+    ax.plot(df["x"], df["y"], "o", color="#1f4e79", label="Эксперимент (без $T=2\\tau$)")
+    xx = np.linspace(0, 1.1, 10)
+    ax.plot(xx, k * xx, color="crimson", label=rf"МНК: $k={k:.4f}$")
+    ax.set_xlabel(r"$1/T$, кГц")
+    ax.set_ylabel(r"$\delta\nu$, кГц")
+    ax.set_xlim(0, 1.1)
+    ax.set_ylim(0, 1.1)
+    ax.legend()
+    save(fig, "fig_spacing.pdf")
+
+
+def plot_bursts() -> None:
+    df = load("bursts_width_points.csv")
+    k = result("цуги: k (Dnu")
+    fig, ax = plt.subplots()
+    ax.errorbar(df["x"], df["y"], yerr=df["ey"], **MARK)
+    xx = np.linspace(0, 11, 10)
+    ax.plot(xx, k * xx, color="crimson", label=rf"МНК: $k={k:.3f}$")
+    ax.set_xlabel(r"$1/\tau = \nu_0/N$, кГц")
+    ax.set_ylabel(r"$\Delta\nu$, кГц")
+    ax.set_xlim(0, 11)
+    ax.set_ylim(0, 11)
+    ax.legend()
+    save(fig, "fig_bursts.pdf")
+
+
+def plot_filter() -> None:
+    df = load("filter_processed.csv")
+    rc = result("tau_RC")
+    nu1 = result("nu_1 (спектр)")
+    fig, ax = plt.subplots()
+    ax.plot(df["nu_kHz"], df["K_exp"], "o", color="#1f4e79", label="Эксперимент")
+    xx = np.linspace(nu1, 3600, 300)
+    th = np.sqrt(1 + (2 * np.pi * nu1 * rc / 1000) ** 2) / np.sqrt(1 + (2 * np.pi * xx * rc / 1000) ** 2)
+    ax.plot(xx, th, color="crimson", label=rf"теория, $\tau_{{RC}}={rc:.2f}$ мкс")
+    ax.set_xlabel(r"$\nu$, кГц")
+    ax.set_ylabel(r"$K_n/K_1$")
+    ax.set_xlim(0, 3600)
+    ax.set_ylim(0, 1.1)
+    ax.legend()
+    save(fig, "fig_filter.pdf")
 
 
 def main() -> None:
-    params = read_params()
     print("Построение графиков в report/img/:")
-    plot_harmonics(params)
-    plot_line("spectrum_width_processed.csv", "inv_tau_kHz", "Dnu_kHz",
-              "", "",
-              r"$1/\tau$, кГц", r"$\Delta\nu$, кГц",
-              r"Ширина спектра прямоугольных импульсов ($T=\mathrm{const}$)",
-              "fig_width.pdf", theory_k=1.0, theory_label=r"теория: $\Delta\nu=1/\tau$")
-    plot_line("harmonics_spacing_processed.csv", "inv_T_kHz", "dnu_kHz",
-              "", "",
-              r"$1/T$, кГц", r"$\delta\nu$, кГц",
-              r"Расстояние между гармониками ($\tau=\mathrm{const}$)",
-              "fig_spacing.pdf", theory_k=1.0, theory_label=r"теория: $\delta\nu=1/T$")
-    plot_line("am_processed.csv", "m", "ratio", "", "",
-              r"$m$, отн. ед.", r"$a_{\mathrm{бок}}/a_{\mathrm{осн}}$, отн. ед.",
-              "Амплитудная модуляция", "fig_am.pdf",
-              theory_k=0.5, theory_label=r"теория: $a_{бок}/a_{осн}=m/2$")
+    plot_harmonics()
+    plot_meander()
+    plot_width()
+    plot_spacing()
+    plot_bursts()
+    plot_filter()
     print("Готово.")
 
 

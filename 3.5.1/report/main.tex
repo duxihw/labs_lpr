@@ -1,0 +1,749 @@
+\documentclass[a4paper,12pt]{article}
+
+% ===========================================================================
+%  Лабораторная работа 3.5.1 «Изучение плазмы газового разряда в неоне»
+%
+%  ЗАГОТОВКА ОТЧЁТА (до измерений). Теория, методика и структура разделов
+%  готовы; места под данные помечены \qq (число) и \fillme (текст).
+%
+%  Сборка:  cd 3.5.1/report && pdflatex main.tex  (или latexmk -pdf main.tex)
+%  Таблицы и графики читаются из ../data/processed/*.csv, которые готовит
+%  ../scripts/process_data.py. Пока файлов нет, вместо таблиц выводятся
+%  пустые бланки (их удобно распечатать и заполнять во время работы),
+%  вместо графиков -- рамки-заглушки.
+% ===========================================================================
+
+\input{../../common/latex_template/preamble.tex}
+
+% Пакеты, нужные именно этой работе
+\usepackage{subcaption}
+\usepackage{circuitikz}
+
+% --- Служебные макросы ------------------------------------------------------
+% Короткий пропуск (число/слово, которое надо вписать после измерений)
+\newcommand{\qq}{\textbf{???}}
+% Пропуск, требующий осмысленного текста
+\newcommand{\fillme}{\textbf{?? НЕОБХОДИМО ЗАПОЛНИТЬ ??}}
+% Имя файла/пути моноширинным шрифтом
+\newcommand{\filename}[1]{\texttt{\detokenize{#1}}}
+% Рисунок из report/img/; если файла ещё нет -- рамка-заглушка
+\newcommand{\labimage}[2]{%
+    \IfFileExists{img/#1}{%
+        \includegraphics[width=#2\linewidth]{img/#1}%
+    }{%
+        \fbox{\parbox[c][0.6\dimexpr#2\linewidth\relax][c]{%
+                \dimexpr#2\linewidth-2\fboxsep-2\fboxrule\relax}{%
+            \centering\small\filename{img/#1}\\[2mm]\fillme}}%
+    }%
+}
+% Путь к обработанным данным
+\newcommand{\proc}[1]{../data/processed/#1}
+
+% Числа из CSV: десятичная запятая; пустая ячейка (NaN) -> «--»
+\pgfkeys{/pgf/number format/.cd, use comma, 1000 sep={\,}}
+\pgfkeys{/pgf/number format/csvnum/.style={precision=6, std=-3:5}}
+\ExplSyntaxOn
+\NewDocumentCommand{\pnum}{m}{
+    \tl_if_blank:eTF {#1} {--} { \pgfmathprintnumber[csvnum]{#1} }
+}
+% Пустой бланк таблицы: #1 -- colspec, #2 -- строка заголовка,
+% #3 -- число столбцов, #4 -- число пустых строк
+\NewDocumentCommand{\BlankTable}{mmmm}{
+    \tl_set:Ne \l_tmpa_tl {
+        \exp_not:N \begin{tblr}
+            \exp_not:n {{colspec={#1}, hlines, vlines,
+                         row{1}={font=\bfseries}, rows={ht=6.5mm}}}
+        \exp_not:n {#2} \exp_not:N \\
+        \prg_replicate:nn {#4} { \prg_replicate:nn {#3 - 1} { & } \exp_not:N \\ }
+        \exp_not:N \end{tblr}
+    }
+    \tl_use:N \l_tmpa_tl
+}
+\ExplSyntaxOff
+
+% Колонтитулы (как в остальных работах репозитория)
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{%
+    \IfFileExists{../../common/latex_template/miptlogo.png}{%
+        \includegraphics[height=1cm]{../../common/latex_template/miptlogo.png}%
+    }{%
+        \textbf{[ЛОГОТИП МФТИ]}%
+    }%
+}
+\fancyhead[R]{\textbf{Емельянов ДА, Байдин ФМ}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{33pt}
+
+\begin{document}
+
+% --- ТИТУЛЬНЫЙ ЛИСТ ---
+\begin{titlepage}
+\begin{center}
+    {\large МОСКОВСКИЙ ФИЗИКО-ТЕХНИЧЕСКИЙ ИНСТИТУТ}
+\end{center}
+\begin{center}
+    {\large Физтех-школа физики и исследований им. Ландау\break ЛФИ}
+\end{center}
+
+    \vspace{3cm}
+
+\vspace{0.15cm}
+{
+\begin{center}
+    \huge \bf Лабораторная работа №3.5.1 по курсу Общая физика\\
+    \vspace{0.4cm}
+    \LARGE Изучение плазмы газового разряда в неоне.
+\end{center}
+}
+\vspace{1.5cm}
+\begin{flushright}
+Емельянов Дмитрий Алексеевич\\
+Байдин Фаддей Михайлович\\
+\vspace{0.4cm}
+Б02-502
+\end{flushright}
+\vspace{10cm}
+\begin{center}
+    \large \qq{} 2026, г. Долгопрудный
+\end{center}
+\end{titlepage}
+% ----------------------
+
+\section{Аннотация}
+\textbf{Цель работы:} изучение вольт-амперной характеристики тлеющего
+разряда в неоне; изучение свойств плазмы положительного столба разряда
+методом двойного зонда.
+
+В работе измеряется вольт-амперная характеристика (ВАХ) тлеющего разряда
+$I_{\text{р}}(U_{\text{р}})$ и определяется его дифференциальное
+сопротивление. При нескольких значениях тока разряда снимаются
+вольт-амперные характеристики двойного зонда, по которым находятся ионный
+ток насыщения и наклон характеристики в нуле. По ним рассчитываются
+температура $T_e$ и концентрация $n_e$ электронов, плазменная частота
+$\omega_p$, электронная поляризационная длина $r_{De}$, дебаевский радиус
+экранирования $r_D$, число частиц в дебаевской сфере $N_D$ и степень
+ионизации плазмы $\alpha$, а также исследуются зависимости $T_e(I_{\text{р}})$
+и $n_e(I_{\text{р}})$.
+
+\section{Теоретические сведения}
+В теоретическом разделе, как и в методическом пособии, используется система
+СГС; расчётные формулы в СИ приведены в \cref{sec:si}.
+
+\subsection{Плазма. Плазменная частота}
+\emph{Плазмой} называют ионизованный газ, поведение заряженных частиц в
+котором носит коллективный характер. Плазма \emph{квазинейтральна}: средние
+концентрации электронов и однозарядных ионов равны, $n_e = n_i = n$.
+
+Если сместить все электроны некоторого объёма плазмы на расстояние
+$\Delta x$ относительно (неподвижных, тяжёлых) ионов, возникнет поле
+$E = 4\pi n e\,\Delta x$, возвращающее электроны назад. Уравнение движения
+электрона $\ddot{\Delta x} = -\frac{4\pi n e^2}{m_e}\Delta x$ описывает
+гармонические (ленгмюровские) колебания с \emph{плазменной частотой}
+\begin{equation}
+    \label{eq:wp}
+    \omega_p = \sqrt{\frac{4\pi n_e e^2}{m_e}}.
+\end{equation}
+Она задаёт характерный временной масштаб отклика плазмы на нарушение
+квазинейтральности.
+
+\subsection{Дебаевский радиус. Идеальность плазмы}
+Амплитуда плазменных колебаний, возбуждаемых тепловым движением электронов,
+$r \sim \bar v_e/\omega_p$, определяет \emph{дебаевский радиус}
+\begin{equation}
+    \label{eq:rD}
+    r_D = \sqrt{\frac{k_{\text{Б}} T}{4\pi n e^2}}.
+\end{equation}
+На расстояниях порядка $r_D$ поле пробного заряда в плазме экранируется:
+$\varphi(r) = \frac{q}{r}e^{-r/r_D}$. В неравновесной плазме
+($T_e \neq T_i$) вводят две длины
+\begin{equation}
+    \label{eq:rDe_rDi}
+    r_{De} = \sqrt{\frac{k_{\text{Б}} T_e}{4\pi n_e e^2}},
+    \qquad
+    r_{Di} = \sqrt{\frac{k_{\text{Б}} T_i}{4\pi n_i e^2}},
+\end{equation}
+а радиус экранирования равен
+\begin{equation}
+    \label{eq:rD_full}
+    r_D = \left(r_{De}^{-2} + r_{Di}^{-2}\right)^{-1/2}
+    \approx r_{Di} \quad\text{при}\quad T_e \gg T_i.
+\end{equation}
+Электронную длину $r_{De}$ называют также \emph{поляризационной}: она
+определяет масштаб, на котором квазинейтральность нарушается тепловыми
+флуктуациями электронов. Ионизованный газ является плазмой, если
+$r_D \ll a$, где $a$ --- характерный размер системы.
+
+Отношение тепловой энергии частиц к энергии их кулоновского взаимодействия
+по порядку величины равно числу частиц в дебаевской сфере
+\begin{equation}
+    \label{eq:ND}
+    N_D = \frac43\pi n_i r_D^3.
+\end{equation}
+Плазма \emph{идеальна}, если $N_D \gg 1$.
+
+В тлеющем разряде плазма существенно неравновесна: электроны,
+ускоряемые полем, имеют $T_e \sim 10^4$~К, а ионы, эффективно обменивающиеся
+энергией с атомами газа, --- $T_i \sim 300$~К.
+
+\subsection{Зондовый метод. Двойной зонд}
+Проводник (зонд), внесённый в плазму, заряжается до отрицательного
+\emph{плавающего потенциала} $U_f$, при котором электронный и ионный токи на
+него уравновешиваются ($\bar v_e \gg \bar v_i$):
+\begin{equation}
+    \label{eq:Uf}
+    U_f = -\frac12\frac{k_{\text{Б}} T_e}{e}\ln\frac{T_e m_i}{T_i m_e}.
+\end{equation}
+Ионный ток насыщения на зонд площади $S$ определяется не тепловой
+скоростью ионов, а их ускорением в приповерхностном слое; для расчётов
+используется полуэмпирическая формула Бома
+\begin{equation}
+    \label{eq:bohm}
+    I_{i\text{н}} \approx 0{,}4\, n_i e S\sqrt{\frac{2k_{\text{Б}} T_e}{m_i}}.
+\end{equation}
+
+\emph{Двойной зонд} --- два одинаковых близко расположенных зонда, между
+которыми создаётся разность потенциалов $U$, $|U| \ll |U_f|$. Оба зонда
+находятся вблизи плавающего потенциала, на ионной ветви ВАХ, и ионные токи
+на них равны $I_{i\text{н}}$. Ток через систему определяется разностью
+электронных токов; с учётом больцмановского распределения электронов и
+условия $I_1 = -I_2 = I$ получается
+\begin{equation}
+    \label{eq:tanh}
+    I = I_{i\text{н}}\,\operatorname{th}\frac{eU}{2k_{\text{Б}} T_e}.
+\end{equation}
+При $|U| \to \infty$ ток стремится к $\pm I_{i\text{н}}$; реальная
+характеристика имеет наклонные асимптоты из-за ускорения частиц
+приложенным полем, поэтому $I_{i\text{н}}$ находится по пересечению
+асимптот с осью $U = 0$. Дифференцируя \eqref{eq:tanh} в нуле, получаем
+формулу для электронной температуры
+\begin{equation}
+    \label{eq:Te}
+    k_{\text{Б}} T_e = \frac12\,\frac{e\, I_{i\text{н}}}
+                           {\left.\dfrac{dI}{dU}\right|_{U=0}}.
+\end{equation}
+По известным $T_e$ и $I_{i\text{н}}$ из \eqref{eq:bohm} находится
+концентрация $n_e = n_i$. Площадь зонда в пренебрежении дебаевским слоем
+$S \approx \pi d l$.
+
+\subsection{Вольт-амперная характеристика тлеющего разряда}
+Самостоятельный разряд в газе зажигается при напряжении зажигания
+$U_{\text{заж}}$, когда выполнен критерий Таунсенда: каждый электрон,
+вышедший из катода, за счёт ударной ионизации в газе и вторичной эмиссии
+ионами с катода воспроизводит хотя бы один новый электрон. Гаснет разряд
+при меньшем напряжении, чем зажигается (гистерезис).
+
+ВАХ газового разряда в широком диапазоне токов
+(рис.~6 Приложения к разделу V методического пособия) содержит участки:
+тёмный таунсендовский разряд; поднормальный тлеющий разряд (падающий
+участок); \emph{нормальный} тлеющий разряд, при котором напряжение почти не
+зависит от тока (растёт лишь площадь катодного пятна при постоянной
+плотности тока); \emph{аномальный} тлеющий разряд (напряжение растёт с
+током); переход к дуговому разряду. На падающих участках
+дифференциальное сопротивление
+\begin{equation}
+    \label{eq:Rdiff}
+    R_{\text{диф}} = \frac{dU}{dI}
+\end{equation}
+отрицательно. Для устойчивого горения разряда последовательно с ним
+включают балластный резистор $R_{\text{б}}$: рабочая точка лежит на
+пересечении ВАХ с нагрузочной прямой $I = (\mathcal{E} - U)/R_{\text{б}}$,
+а условие устойчивости имеет вид $R_{\text{диф}} + R_{\text{б}} > 0$.
+
+\subsection{Расчётные формулы в СИ}
+\label{sec:si}
+Обработка (скрипт \filename{scripts/process_data.py}) ведётся в СИ:
+\begin{gather}
+    k_{\text{Б}} T_e\,[\text{эВ}] = \frac{I_{i\text{н}}}{2\,dI/dU},
+    \qquad
+    n_e = \frac{I_{i\text{н}}}{0{,}4\, e S}\sqrt{\frac{m_i}{2 k_{\text{Б}} T_e}},
+    \qquad S = \pi d l,
+    \label{eq:si1}\\
+    \omega_p = \sqrt{\frac{n_e e^2}{\varepsilon_0 m_e}},
+    \qquad
+    r_{De} = \sqrt{\frac{\varepsilon_0 k_{\text{Б}} T_e}{n_e e^2}},
+    \qquad
+    r_{Di} = \sqrt{\frac{\varepsilon_0 k_{\text{Б}} T_i}{n_e e^2}},
+    \label{eq:si2}\\
+    N_D = \frac43\pi n_e r_D^3,
+    \qquad
+    \alpha = \frac{n_e}{n_0},\quad n_0 = \frac{P}{k_{\text{Б}} T},
+    \label{eq:si3}
+\end{gather}
+где $m_i = 22\,\text{а.е.м.}$ (изотоп $^{22}$Ne), $T_i \approx T = 300$~К,
+$P \approx 2$~торр.
+
+\section{Используемое оборудование}
+\begin{itemize}
+    \item стеклянная газоразрядная трубка с холодным полым катодом, тремя
+          анодами и геттерным узлом, наполненная неоном $^{22}$Ne при
+          давлении $2$~мм рт.\,ст.;
+    \item двойной зонд из молибденовой проволоки
+          (диаметр $d = \qq$~мм, длина $l = \qq$~мм);
+    \item высоковольтный источник питания (ВИП) до нескольких киловольт;
+    \item балластный резистор $R_{\text{б}} \approx 500$~кОм
+          ($R_{\text{б}} = \qq$~кОм);
+    \item высокоомный делитель напряжения $(R_1 + R_2)/R_2 = \qq$;
+    \item источник постоянного тока с дискретным переключателем
+          выходного напряжения и потенциометр $R$;
+    \item миллиамперметр $A_1$ (ток разряда), вольтметр $V_1$
+          (напряжение на трубке), микроамперметр $A_2$ (ток зонда),
+          вольтметр $V_2$ (напряжение на зондах);
+    \item переключатели П1 (выбор анода) и П2 (полярность напряжения на
+          зондах).
+\end{itemize}
+
+\section{Методика измерений}
+Схема установки приведена на \cref{fig:scheme}. Катод и один из анодов
+(I или II) через переключатель П1 и балластный резистор $R_{\text{б}}$
+подключаются к ВИП. Ток разряда измеряется миллиамперметром $A_1$,
+напряжение на трубке --- вольтметром $V_1$ через делитель с коэффициентом
+$(R_1+R_2)/R_2$.
+
+\begin{figure}[!ht]
+    \centering
+    \begin{circuitikz}[scale=0.82, transform shape, line width=0.6pt]
+        % --- трубка ---
+        \draw[rounded corners=10pt, fill=gray!8] (0,0) rectangle (9,1.8);
+        \node[font=\small, anchor=north] at (4.5,-0.05) {};
+        % катод
+        \draw[line width=2pt] (0.5,0.35) -- (0.5,1.45);
+        \node[font=\small, anchor=west] at (0.6,0.4) {К};
+        % анод I
+        \draw[line width=2pt] (3,1.8) -- (3,1.3);
+        \node[font=\small, anchor=north] at (3,1.25) {А-I};
+        % анод II
+        \draw[line width=2pt] (8.5,0.35) -- (8.5,1.45);
+        \node[font=\small, anchor=east] at (8.4,0.4) {А-II};
+        % зонды
+        \draw[line width=1.4pt] (5.6,0.5) -- (5.6,1.2);
+        \draw[line width=1.4pt] (6.0,0.5) -- (6.0,1.2);
+        \node[font=\small, anchor=south] at (5.8,1.2) {зонды};
+
+        % --- цепь разряда ---
+        \draw (0.5,0.9) -- (-1.5,0.9) -- (-1.5,4.4)
+              to[battery1, l_=ВИП] (0.8,4.4)
+              to[R, l=$R_{\text{б}}$] (3.2,4.4)
+              to[rmeter, t=mA, l=$A_1$] (5.6,4.4) coordinate (top);
+        % переключатель П1
+        \draw (top) -- (6.6,4.4) node[circ]{} coordinate (sw);
+        \draw (sw) -- ++(0.75,0.35) node[ocirc]{};
+        \draw (7.5,4.75) -- (10.0,4.75) -- (10.0,0.9) -- (8.5,0.9);
+        \draw (7.5,4.05) node[ocirc]{} -- (7.5,3.0) -- (3,3.0) -- (3,1.8);
+        \node[font=\small, anchor=south] at (7.0,4.8) {П1};
+        % делитель и V1
+        \draw (top) -- (5.6,5.6) to[R, l_=$R_1$] (2.2,5.6) coordinate (mid)
+              to[R, l_=$R_2$] (-2.8,5.6) -- (-2.8,0.9) -- (-1.5,0.9);
+        \draw (mid) -- (2.2,6.8) to[rmeter, t=V, l_=$V_1$] (-2.8,6.8) -- (-2.8,5.6);
+
+        % --- цепь зондов ---
+        \draw (5.6,0.5) -- (5.6,-0.9) -- (3.0,-0.9) coordinate (pa);
+        \draw (6.0,0.5) -- (6.0,-0.6) -- (8.4,-0.6) -- (8.4,-0.9) coordinate (pb);
+        \draw (4.0,-0.9) node[circ]{} -- (4.0,-1.9)
+              to[rmeter, t=V, l_=$V_2$] (7.4,-1.9) -- (7.4,-0.9) -- (pb);
+        \draw (7.4,-0.9) node[circ]{};
+        \draw (pa) to[rmeter, t=\textmu A, l_=$A_2$] (3.0,-3.4) -- (4.3,-3.4);
+        \draw (pb) -- (8.4,-3.4) -- (6.7,-3.4);
+        \draw[fill=white] (4.3,-3.9) rectangle (6.7,-2.9);
+        \node[font=\small] at (5.5,-3.4) {П2};
+        \draw (3.0,-5.6) to[pR, n=pot] (8.4,-5.6);
+        \node[font=\small] at (5.7,-6.15) {$R$};
+        \draw (4.9,-3.9) -- (4.9,-4.6) -| (pot.wiper);
+        \draw (6.1,-3.9) -- (6.1,-4.6) -- (8.4,-4.6) -- (8.4,-5.6);
+        \draw (3.0,-5.6) -- (3.0,-7.0)
+              to[battery1, l_=источник пост. тока] (8.4,-7.0) -- (8.4,-5.6);
+    \end{circuitikz}
+    \caption{Схема установки для исследования газового разряда
+             (упрощённо; по рис.~1 описания работы)}
+    \label{fig:scheme}
+\end{figure}
+
+\paragraph{ВАХ разряда.} Переключатель П1 устанавливается в положение
+«Анод-I». Плавно увеличивая напряжение ВИП, фиксируют напряжение
+зажигания $U_{\text{заж}}$ (показание $V_1$ непосредственно перед
+зажиганием). Затем измеряют $I_{\text{р}}(U_{\text{р}})$ при увеличении и
+при уменьшении тока в допустимом диапазоне $I_{\text{р}} \leqslant \qq$~мА
+и отмечают напряжение гашения разряда.
+
+\paragraph{Зондовые характеристики.} Напряжение ВИП сбрасывается до нуля,
+П1 переводится в положение «Анод-II»: разряд горит между катодом и
+анодом-II, и двойной зонд оказывается в плазме положительного столба.
+Устанавливается ток разряда $I_{\text{р}} \approx 5$~мА, потенциометром $R$
+--- максимальное напряжение на зондах $U_{\text{з}}^{\max} \approx 25$~В.
+ВАХ зонда $I_{\text{з}}(U_{\text{з}})$ снимается в диапазоне
+$-U_{\text{з}}^{\max}\ldots U_{\text{з}}^{\max}$; при $I_{\text{з}} = 0$
+полярность меняется переключателем П2, вблизи $U_{\text{з}} = 0$ точки
+берутся чаще. Ток разряда в процессе измерения поддерживается постоянным.
+Измерения повторяются ещё при 3--4 значениях $I_{\text{р}}$.
+
+\paragraph{Обработка.} Зондовые характеристики центрируются (сдвиг по току
+--- на полусумму пересечений асимптот с осью $U = 0$, по напряжению --- так,
+чтобы $I(0) = 0$). Ток насыщения $I_{i\text{н}}$ определяется как
+полуразность пересечений асимптот (МНК по точкам с
+$|U| > U_{\text{ас}}$) с осью $U = 0$, наклон $dI/dU|_{0}$ --- МНК по точкам с
+$|U| < U_{\text{лин}}$. Для контроля характеристика аппроксимируется
+функцией $I = I_{i\text{н}}\operatorname{th}\bigl(eU/2k_{\text{Б}}T_e\bigr) + AU$.
+Погрешности $I_{i\text{н}}$ и $dI/dU$ --- случайные погрешности МНК,
+погрешности косвенных величин находятся по правилам переноса.
+
+\clearpage
+\section{Результаты измерений и обработка данных}
+
+\subsection{Параметры установки}
+\begin{itemize}
+    \item диаметр и длина зонда: $d = \qq$~мм, $l = \qq$~мм,
+          площадь $S = \pi d l = \qq$~мм$^2$;
+    \item коэффициент делителя $(R_1+R_2)/R_2 = \qq$;
+    \item балластное сопротивление $R_{\text{б}} = \qq$~кОм;
+    \item давление неона $P \approx 2$~торр, $T \approx 300$~К,
+          $n_0 = P/k_{\text{Б}}T \approx 6{,}4\cdot10^{16}$~см$^{-3}$;
+    \item границы участков обработки: $U_{\text{ас}} = \qq$~В,
+          $U_{\text{лин}} = \qq$~В.
+\end{itemize}
+Все величины дублируются в \filename{data/raw/setup_params.csv} и
+используются скриптами обработки.
+
+% ---------------------------------------------------------------------------
+\subsection{Вольт-амперная характеристика разряда}
+Напряжение зажигания разряда $U_{\text{заж}} = \qq$~В, напряжение
+гашения $U_{\text{гаш}} = \qq$~В. Результаты измерения ВАХ приведены в
+\cref{tab:discharge} и на \cref{fig:discharge}.
+
+\begin{table}[!ht]
+    \centering
+    \caption{ВАХ тлеющего разряда (П1 в положении «Анод-I»);
+             $R_{\text{диф}}$ --- локальная производная $dU/dI$}
+    \label{tab:discharge}
+    \IfFileExists{\proc{discharge_iv_processed.csv}}{%
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|c|c|},
+            hlines, vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {
+            ветвь & $U_{V_1}$, В & $U_{\text{р}}$, В & $I_{\text{р}}$, мА
+            & $R_{\text{диф}}$, кОм \\
+        }
+    ]%
+    {\proc{discharge_iv_processed.csv}}%
+    {branch=\cBr, U_V1_V=\cUv, U_r_V=\cUr, I_mA=\cI, R_diff_kOhm=\cR}%
+    {%
+        \ifcsvstrcmp{\cBr}{up}{$\uparrow$}{$\downarrow$}
+        & $\pnum{\cUv}$ & $\pnum{\cUr}$ & $\pnum{\cI}$ & $\pnum{\cR}$
+    }%
+    }{%
+    \small
+    \BlankTable{Q[c,25mm]|Q[c,25mm]||Q[c,25mm]|Q[c,25mm]|Q[c,25mm]}%
+        {$U_{V_1}$, В $\uparrow$ & $I_{\text{р}}$, мА $\uparrow$ &
+         $U_{V_1}$, В $\downarrow$ & $I_{\text{р}}$, мА $\downarrow$ &
+         примечание}{5}{16}%
+    }
+\end{table}
+
+\begin{figure}[!ht]
+    \centering
+    \IfFileExists{\proc{discharge_iv_up.csv}}{%
+    \begin{tikzpicture}
+        \begin{axis}[
+            width=0.85\textwidth, height=0.55\textwidth,
+            xlabel={$U_{\text{р}}$, В},
+            ylabel={$I_{\text{р}}$, мА},
+            ymin=0,
+            grid=both, minor tick num=1,
+            legend pos=north east,
+            /pgf/number format/use comma,
+        ]
+            \addplot[only marks, mark=*, mark size=1.8pt]
+                table[col sep=comma, x=U_r_V, y=I_mA] {\proc{discharge_iv_up.csv}};
+            \addlegendentry{увеличение тока}
+            \IfFileExists{\proc{discharge_iv_down.csv}}{%
+            \addplot[only marks, mark=o, mark size=2.2pt]
+                table[col sep=comma, x=U_r_V, y=I_mA] {\proc{discharge_iv_down.csv}};
+            \addlegendentry{уменьшение тока}
+            }{}
+        \end{axis}
+    \end{tikzpicture}%
+    }{\labimage{discharge_iv.pdf}{0.8}}
+    \caption{Вольт-амперная характеристика тлеющего разряда в неоне}
+    \label{fig:discharge}
+\end{figure}
+
+Наклон ВАХ в координатах $U_{\text{р}}(I_{\text{р}})$ (МНК):
+\begin{equation}
+    R_{\text{диф}} = \frac{dU_{\text{р}}}{dI_{\text{р}}} = \qq \pm \qq~\text{кОм},
+\end{equation}
+максимальное по модулю дифференциальное сопротивление
+$R_{\text{диф}}^{\max} = \qq$~кОм (при $I_{\text{р}} = \qq$~мА).
+
+Сравнение с рис.~6 Приложения к разделу V: полученный участок ВАХ
+соответствует \fillme{} (поднормальному / нормальному / аномальному
+тлеющему разряду), поскольку \fillme.
+
+% ---------------------------------------------------------------------------
+\clearpage
+\subsection{Зондовые характеристики}
+Зондовые характеристики сняты при токах разряда
+$I_{\text{р}} = \qq,\ \qq,\ \qq,\ \qq$~мА. Семейство центрированных
+характеристик показано на \cref{fig:probe_family}, каждая характеристика
+с построенными асимптотами и касательной в нуле --- на
+\cref{fig:probe_single}.
+
+\begin{figure}[!ht]
+    \centering
+    \IfFileExists{\proc{probe_family.tex}}{%
+    \begin{tikzpicture}
+        \begin{axis}[
+            width=0.9\textwidth, height=0.62\textwidth,
+            xlabel={$U$, В},
+            ylabel={$I$, мкА},
+            axis lines=middle,
+            grid=both, minor tick num=1,
+            legend pos=south east,
+            legend style={font=\small},
+            xlabel style={at={(ticklabel* cs:1)}, anchor=north west},
+            ylabel style={at={(ticklabel* cs:1)}, anchor=south west},
+            cycle list name=exotic,
+        ]
+            \input{\proc{probe_family.tex}}
+        \end{axis}
+    \end{tikzpicture}%
+    }{\labimage{probe_family.pdf}{0.85}}
+    \caption{Семейство центрированных ВАХ двойного зонда при различных
+             токах разряда}
+    \label{fig:probe_family}
+\end{figure}
+
+\begin{figure}[!ht]
+    \centering
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \labimage{probe_1.pdf}{1.0}
+        \caption{$I_{\text{р}} = \qq$~мА}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \labimage{probe_2.pdf}{1.0}
+        \caption{$I_{\text{р}} = \qq$~мА}
+    \end{subfigure}
+
+    \vspace{4mm}
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \labimage{probe_3.pdf}{1.0}
+        \caption{$I_{\text{р}} = \qq$~мА}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \labimage{probe_4.pdf}{1.0}
+        \caption{$I_{\text{р}} = \qq$~мА}
+    \end{subfigure}
+    \caption{ВАХ двойного зонда: асимптоты (пунктир) и касательная в
+             начале координат; квадратами отмечены $\pm I_{i\text{н}}$
+             (графики \filename{scripts/plot_data.py})}
+    \label{fig:probe_single}
+\end{figure}
+
+По каждой характеристике определены ионный ток насыщения $I_{i\text{н}}$ и
+наклон $dI/dU|_{U=0}$, по формуле \eqref{eq:Te} рассчитана электронная
+температура (\cref{tab:probe}). В последнем столбце --- $k_{\text{Б}}T_e$,
+полученная аппроксимацией всей характеристики функцией
+\eqref{eq:tanh} с линейной добавкой.
+
+\begin{table}[!ht]
+    \centering
+    \caption{Результаты обработки зондовых характеристик}
+    \label{tab:probe}
+    \IfFileExists{\proc{probe_results.csv}}{%
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|c|c|},
+            hlines, vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {
+            $I_{\text{р}}$, мА & $I_{i\text{н}}$, мкА
+            & $dI/dU|_0$, мкА/В & $k_{\text{Б}}T_e$, эВ
+            & $k_{\text{Б}}T_e^{\,\text{th}}$, эВ \\
+        }
+    ]%
+    {\proc{probe_results.csv}}%
+    {Ip_mA=\cIp, Iin_uA=\cIin, sIin_uA=\csIin, dIdU_uA_V=\cK, sdIdU_uA_V=\csK,
+     Te_eV=\cTe, sTe_eV=\csTe, Te_fit_eV=\cTef}%
+    {%
+        $\pnum{\cIp}$ & $\pnum{\cIin} \pm \pnum{\csIin}$
+        & $\pnum{\cK} \pm \pnum{\csK}$ & $\pnum{\cTe} \pm \pnum{\csTe}$
+        & $\pnum{\cTef}$
+    }%
+    }{%
+    \BlankTable{Q[c,20mm]|Q[c,28mm]|Q[c,28mm]|Q[c,28mm]|Q[c,28mm]}%
+        {$I_{\text{р}}$, мА & $I_{i\text{н}}$, мкА & $dI/dU|_0$, мкА/В
+         & $k_{\text{Б}}T_e$, эВ & $k_{\text{Б}}T_e^{\,\text{th}}$, эВ}{5}{4}%
+    }
+\end{table}
+
+% ---------------------------------------------------------------------------
+\subsection{Параметры плазмы}
+По формулам \eqref{eq:si1}--\eqref{eq:si3} рассчитаны концентрация
+электронов, плазменная частота, электронная поляризационная длина,
+радиус экранирования (с учётом $T_i \approx 300$~К $\ll T_e$), число
+частиц в дебаевской сфере и степень ионизации (\cref{tab:plasma}).
+
+\begin{table}[!ht]
+    \centering
+    \caption{Параметры плазмы положительного столба при различных токах
+             разряда}
+    \label{tab:plasma}
+    \small
+    \IfFileExists{\proc{plasma_params.csv}}{%
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|c|c|c|c|c|c|},
+            hlines, vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {
+            $I_{\text{р}}$, мА & $k_{\text{Б}}T_e$, эВ & $T_e$, К
+            & $n_e$, $10^{10}$~см$^{-3}$ & $\omega_p$, $10^{9}$~с$^{-1}$
+            & $r_{De}$, мкм & $r_D$, мкм & $N_D$ & $\alpha$, $10^{-7}$ \\
+        }
+    ]%
+    {\proc{plasma_params.csv}}%
+    {Ip_mA=\cIp, Te_eV=\cTe, sTe_eV=\csTe, Te_K=\cTK, n_1e10_cm3=\cn,
+     sn_1e10_cm3=\csn, wp_1e9_rad_s=\cwp, rDe_um=\crDe, rD_um=\crD, ND=\cND,
+     alpha_1e7=\cal}%
+    {%
+        $\pnum{\cIp}$ & $\pnum{\cTe}$ & $\pnum{\cTK}$
+        & $\pnum{\cn} \pm \pnum{\csn}$ & $\pnum{\cwp}$ & $\pnum{\crDe}$
+        & $\pnum{\crD}$ & $\pnum{\cND}$ & $\pnum{\cal}$
+    }%
+    }{%
+    \BlankTable{Q[c,13mm]|Q[c,14mm]|Q[c,16mm]|Q[c,17mm]|Q[c,16mm]|Q[c,13mm]|Q[c,13mm]|Q[c,11mm]|Q[c,13mm]}%
+        {$I_{\text{р}}$, мА & $k_{\text{Б}}T_e$, эВ & $T_e$, К
+         & $n_e$, $10^{10}$ см$^{-3}$ & $\omega_p$, $10^{9}$ с$^{-1}$
+         & $r_{De}$, мкм & $r_D$, мкм & $N_D$ & $\alpha$, $10^{-7}$}{9}{4}%
+    }
+\end{table}
+
+\begin{itemize}
+    \item \textbf{Квазинейтральность.} $r_D \approx \qq$~мкм и
+          $r_{De} \approx \qq$~мкм много меньше радиуса трубки
+          $a \approx \qq$~мм, следовательно \fillme.
+    \item \textbf{Идеальность.} $N_D \approx \qq \gg 1$ (или нет), поэтому
+          плазма \fillme.
+    \item \textbf{Равновесность.} $T_e \approx \qq$~К $\gg T_i \approx 300$~К
+          --- плазма \fillme.
+    \item \textbf{Степень ионизации} $\alpha \sim \qq$ --- плазма
+          слабоионизованная (\fillme).
+\end{itemize}
+
+\begin{figure}[!ht]
+    \centering
+    \IfFileExists{\proc{plasma_params.csv}}{%
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \begin{axis}[
+                width=\linewidth, height=0.85\linewidth,
+                xlabel={$I_{\text{р}}$, мА}, ylabel={$k_{\text{Б}}T_e$, эВ},
+                xmin=0, ymin=0, grid=both,
+            ]
+                \addplot[only marks, mark=*, mark size=1.8pt,
+                         error bars/.cd, y dir=both, y explicit]
+                    table[col sep=comma, x=Ip_mA, y=Te_eV, y error=sTe_eV]
+                    {\proc{plasma_params.csv}};
+            \end{axis}
+        \end{tikzpicture}
+        \caption{$T_e(I_{\text{р}})$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \begin{axis}[
+                width=\linewidth, height=0.85\linewidth,
+                xlabel={$I_{\text{р}}$, мА}, ylabel={$n_e$, $10^{10}$~см$^{-3}$},
+                xmin=0, ymin=0, grid=both,
+            ]
+                \addplot[only marks, mark=*, mark size=1.8pt,
+                         error bars/.cd, y dir=both, y explicit]
+                    table[col sep=comma, x=Ip_mA, y=n_1e10_cm3, y error=sn_1e10_cm3]
+                    {\proc{plasma_params.csv}};
+            \end{axis}
+        \end{tikzpicture}
+        \caption{$n_e(I_{\text{р}})$}
+    \end{subfigure}%
+    }{%
+    \begin{subfigure}{0.48\textwidth}
+        \centering\labimage{Te_vs_Ip.pdf}{1.0}\caption{$T_e(I_{\text{р}})$}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering\labimage{ne_vs_Ip.pdf}{1.0}\caption{$n_e(I_{\text{р}})$}
+    \end{subfigure}%
+    }
+    \caption{Зависимость электронной температуры и концентрации электронов
+             от тока разряда}
+    \label{fig:Te_ne}
+\end{figure}
+
+Анализ зависимостей: \fillme{} (ожидается рост $n_e$ примерно
+пропорционально $I_{\text{р}}$, поскольку плотность тока в
+положительном столбе $j \approx e n_e \mu_e E$; температура электронов
+определяется балансом ионизации и диффузионных потерь на стенки и
+слабо зависит от тока).
+
+\subsection{Оценка погрешностей}
+\begin{itemize}
+    \item Приборные погрешности: $A_1$ --- \qq, $V_1$ --- \qq,
+          $A_2$ --- \qq, $V_2$ --- \qq.
+    \item Погрешности $I_{i\text{н}}$ и $dI/dU|_0$ определяются по
+          разбросу точек (МНК); относительная погрешность $T_e$:
+          $\varepsilon_{T} = \sqrt{\varepsilon_{I}^2 + \varepsilon_{k}^2}
+          \approx \qq$~\%.
+    \item Относительная погрешность концентрации
+          $\varepsilon_n = \sqrt{\varepsilon_I^2 + \varepsilon_T^2/4
+          + \varepsilon_S^2} \approx \qq$~\%. Систематическую
+          погрешность вносят полуэмпирический коэффициент $0{,}4$ в формуле
+          Бома и неопределённость площади зонда из-за дебаевского слоя
+          (\fillme).
+    \item Результат $T_e$ зависит от выбора участков для асимптот и
+          касательной: при изменении $U_{\text{лин}}$ в пределах \qq{}
+          $T_e$ меняется на \qq~\%. Сравнение с аппроксимацией
+          функцией th: \fillme.
+\end{itemize}
+
+\section{Обсуждение результатов}
+\begin{itemize}
+    \item ВАХ разряда: \fillme.
+    \item Зондовые характеристики имеют вид, предсказанный
+          \eqref{eq:tanh}; наклон асимптот \fillme.
+    \item Полученные $k_{\text{Б}}T_e \approx \qq$~эВ и
+          $n_e \sim \qq$~см$^{-3}$ сравнить с типичными для тлеющего
+          разряда значениями ($T_e \sim 1$--$5$~эВ,
+          $n_e \sim 10^{9}$--$10^{11}$~см$^{-3}$): \fillme.
+    \item Зависимости $T_e(I_{\text{р}})$ и $n_e(I_{\text{р}})$: \fillme.
+\end{itemize}
+
+\section{Заключение}
+\begin{itemize}
+    \item Измерена ВАХ тлеющего разряда в неоне: $U_{\text{заж}} = \qq$~В,
+          максимальное дифференциальное сопротивление
+          $R_{\text{диф}} = \qq$~кОм; исследованный участок соответствует
+          \fillme.
+    \item Методом двойного зонда при $I_{\text{р}} = \qq\div\qq$~мА
+          получены $k_{\text{Б}}T_e = \qq\div\qq$~эВ
+          ($T_e \approx \qq$~К) и $n_e = \qq\div\qq$~см$^{-3}$.
+    \item Плазменная частота $\omega_p \approx \qq$~с$^{-1}$, поляризационная
+          длина $r_{De} \approx \qq$~мкм, радиус экранирования
+          $r_D \approx \qq$~мкм, $N_D \approx \qq$, степень ионизации
+          $\alpha \approx \qq$.
+    \item Плазма положительного столба квазинейтральна (\fillme),
+          идеальна (\fillme), неравновесна ($T_e \gg T_i$) и слабо
+          ионизована.
+\end{itemize}
+
+\end{document}

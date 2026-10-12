@@ -1,0 +1,667 @@
+\documentclass[a4paper,12pt]{article}
+
+% ===========================================================================
+%  Лабораторная работа 3.4.5 «Петля гистерезиса (динамический метод)»
+%
+%  Сборка:  cd 3.4.5/report && latexmk -pdf main.tex
+%  Таблицы и графики читаются из ../data/processed/*.csv, итоговые числа --
+%  из ../data/processed/results.tex (макрос \res{...}). Всё это готовит
+%  ../scripts/process_data.py. До проведения измерений на месте чисел
+%  стоят метки ???.
+% ===========================================================================
+
+\input{../../common/latex_template/preamble.tex}
+
+\usepackage{subcaption}
+\usepackage{circuitikz}
+
+% Числа на осях: десятичная запятая, без разделителя тысяч
+\pgfplotsset{/pgf/number format/.cd, use comma, 1000 sep={}}
+
+% --- Служебные макросы ------------------------------------------------------
+\newcommand{\qq}{\textbf{???}}
+\newcommand{\fillme}{\textbf{?? НЕОБХОДИМО ЗАПОЛНИТЬ ??}}
+\newcommand{\filename}[1]{\texttt{\detokenize{#1}}}
+% Итоговые числа из data/processed/results.tex; нет значения -> ???
+\IfFileExists{../data/processed/results.tex}{\input{../data/processed/results.tex}}{}
+\newcommand{\res}[1]{\ifcsname res@#1\endcsname\csname res@#1\endcsname\else\qq\fi}
+% Фото/зарисовка из report/img/. Если файла ещё нет -- рамка-заглушка.
+\newcommand{\labimage}[2]{%
+    \IfFileExists{img/#1}{%
+        \includegraphics[width=#2\linewidth]{img/#1}%
+    }{%
+        \fbox{\parbox[c][0.6\dimexpr#2\linewidth\relax][c]{%
+                \dimexpr#2\linewidth-2\fboxsep-2\fboxrule\relax}{%
+            \centering\small\filename{img/#1}\\[2mm]\fillme}}%
+    }%
+}
+\newcommand{\vx}{\text{вх}}
+\newcommand{\vy}{\text{вых}}
+
+% Колонтитулы (как в остальных работах репозитория)
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{%
+    \IfFileExists{../../common/latex_template/miptlogo.png}{%
+        \includegraphics[height=1cm]{../../common/latex_template/miptlogo.png}%
+    }{%
+        \textbf{[ЛОГОТИП МФТИ]}%
+    }%
+}
+\fancyhead[R]{\textbf{Емельянов ДА, Байдин ФМ}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{33pt}
+
+\begin{document}
+
+% --- ТИТУЛЬНЫЙ ЛИСТ ---
+\begin{titlepage}
+\begin{center}
+    {\large МОСКОВСКИЙ ФИЗИКО-ТЕХНИЧЕСКИЙ ИНСТИТУТ}
+\end{center}
+\begin{center}
+    {\large Физтех-школа физики и исследований им. Ландау\break ЛФИ}
+\end{center}
+
+    \vspace{3cm}
+
+\vspace{0.15cm}
+{
+\begin{center}
+    \huge \bf Лабораторная работа №3.4.5 по курсу Общая физика\\
+    \vspace{0.4cm}
+    \LARGE Петля гистерезиса (динамический метод).
+\end{center}
+}
+\vspace{1.5cm}
+\begin{flushright}
+Емельянов Дмитрий Алексеевич\\
+Байдин Фаддей Михайлович\\
+\vspace{0.4cm}
+Б02-502
+\end{flushright}
+\vspace{10cm}
+\begin{center}
+    \large \qq\ октября 2026, г. Долгопрудный
+\end{center}
+\end{titlepage}
+% ----------------------
+
+\section{Аннотация}
+В работе с помощью электронного осциллографа в режиме $X$--$Y$ исследуются
+петли гистерезиса нескольких тороидальных ферромагнитных образцов в
+переменном поле частоты $\nu_0 = 50$~Гц. Сигнал, пропорциональный
+напряжённости поля $H$, снимается с резистора в цепи намагничивающей
+обмотки, а сигнал, пропорциональный индукции $B$, --- с интегрирующей
+$RC$-цепочки, подключённой к измерительной обмотке.
+
+Для каждого образца по предельной петле определяются коэрцитивное поле
+$H_c$, остаточная индукция $B_r$, индукция насыщения $B_s$ и
+соответствующая ей амплитуда поля $H_s$; по вершинам частных петель
+строится начальная кривая намагничивания и оцениваются начальная и
+максимальная дифференциальная магнитные проницаемости. Проводятся
+калибровка каналов осциллографа и измерение постоянной времени
+интегрирующей цепочки.
+
+\section{Теоретические сведения}
+
+\subsection{Петля гистерезиса ферромагнетика}
+Индукция $B$ и напряжённость $H$ магнитного поля в ферромагнетике связаны
+неоднозначно: $B$ зависит не только от $H$, но и от предыстории образца
+(\cref{fig:loop_theory}). При монотонном увеличении поля из размагниченного
+состояния ($H = 0$, $B = 0$) образец намагничивается по
+\emph{начальной кривой намагничивания} $OAC$; в точке $C$ намагниченность
+достигает насыщения $M_s$, и далее (участок $CD$) индукция растёт только за
+счёт роста $H$:
+\begin{equation}
+    \label{eq:B_sat}
+    B = \mu_0 (H + M_s), \qquad \frac{dB}{dH} = \mu_0 .
+\end{equation}
+
+\begin{figure}[!ht]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            width=0.62\textwidth, height=0.48\textwidth,
+            axis lines=middle, xlabel={$H$}, ylabel={$B$},
+            xmin=-4.2, xmax=4.6, ymin=-1.55, ymax=1.65,
+            xtick=\empty, ytick=\empty, samples=200, clip=false,
+        ]
+            % предельная петля: B = tanh((H -+ Hc)/a) + малый линейный рост
+            \addplot[thick, domain=-3.6:3.6] {tanh((x+0.9)/0.55) + 0.05*x};
+            \addplot[thick, domain=-3.6:3.6] {tanh((x-0.9)/0.55) + 0.05*x};
+            % начальная кривая
+            \addplot[thick, dashed, domain=0:3.6] {tanh(x*x/1.6) + 0.05*x};
+            % частная петля (пунктир)
+            \addplot[densely dotted, domain=-1.3:1.3] {0.86*tanh((x+0.35)/0.45)};
+            \addplot[densely dotted, domain=-1.3:1.3] {0.86*tanh((x-0.35)/0.45)};
+            \node[above left]  at (axis cs:3.6,1.18) {$D$};
+            \node[above left]  at (axis cs:2.4,1.1) {$C$};
+            \node[below right] at (axis cs:-2.4,-1.1) {$C'$};
+            \node[below right] at (axis cs:-3.6,-1.18) {$D'$};
+            \node[below right] at (axis cs:0,0.95) {$B_r$};
+            \fill (axis cs:0,0.934) circle (1.2pt) (axis cs:-0.9,0) circle (1.2pt) (axis cs:1.3,0.85) circle (1.2pt) (axis cs:-1.3,-0.85) circle (1.2pt);
+            \node[below left]  at (axis cs:-0.9,0) {$-H_c$};
+            \node[right] at (axis cs:1.35,0.78) {$A$};
+            \node[left] at (axis cs:-1.35,-0.78) {$A'$};
+            \node[below right] at (axis cs:0,0) {$O$};
+            \draw[gray, dashed] (axis cs:0,1.0) -- (axis cs:3.6,1.18);
+            \node[left] at (axis cs:0,1.08) {\small $\mu_0 M_s$};
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Петля гистерезиса ферромагнетика (схематично): $CEFC'E'F'C$ ---
+             предельная петля, $OAC$ --- начальная кривая намагничивания,
+             $AA'$ --- частная петля}
+    \label{fig:loop_theory}
+\end{figure}
+
+Если к образцу прикладывать переменное поле, его состояние на плоскости
+$H$--$B$ описывает замкнутую кривую --- \emph{петлю гистерезиса}. Если
+амплитуда поля достаточна для насыщения, получается \emph{предельная петля};
+при дальнейшем увеличении амплитуды растут только «усы» $CD$ и $C'D'$, а
+площадь петли практически не меняется. Пересечение предельной петли с осью
+$B$ даёт \emph{остаточную индукцию} $B_r$, с осью $H$ --- \emph{коэрцитивное
+поле} $H_c$. Вершины частных петель (точки $A$, $A'$) лежат на начальной
+кривой намагничивания, поэтому её можно снять, плавно уменьшая амплитуду
+тока и отмечая положения вершин.
+
+Наклон кривой намагничивания характеризуется дифференциальной магнитной
+проницаемостью
+\begin{equation}
+    \label{eq:mu_diff}
+    \mu_{\text{диф}} = \frac{1}{\mu_0}\frac{dB}{dH};
+\end{equation}
+начальная проницаемость $\mu_{\text{нач}} = \lim\limits_{H\to 0} B/(\mu_0 H)$.
+
+Площадь петли на плоскости $H$--$B$ равна энергии, которая необратимо
+выделяется в виде тепла в единице объёма образца за один цикл
+перемагничивания:
+\begin{equation}
+    \label{eq:loss}
+    w = \oint H\,dB, \qquad \frac{P}{V} = \nu_0\, w .
+\end{equation}
+
+\subsection{Измерение напряжённости поля}
+Для тороидального образца с намагничивающей обмоткой из $N_0$ витков по
+теореме о циркуляции
+\begin{equation}
+    \label{eq:H}
+    H = \frac{N_0 I_0}{2\pi R} = \frac{N_0 I_0}{L},
+\end{equation}
+где $L = 2\pi R$ --- длина средней линии тора (намагниченность можно
+считать однородной при $r \ll R$). Ток $I_0$ измеряется по падению
+напряжения $U_R = R_0 I_0$ на резисторе $R_0$, которое подаётся на канал $X$
+осциллографа. Поэтому отклонение луча по горизонтали пропорционально $H$:
+\begin{equation}
+    \label{eq:hx}
+    H = h_x\,[X], \qquad h_x = \frac{N_0}{L}\, M_x, \qquad
+    M_x = \frac{K_x}{R_0},
+\end{equation}
+где $K_x$ --- коэффициент отклонения канала $X$ (мВ/дел), $M_x$ --- цена
+деления по току (мА/дел).
+
+Цену деления $M_x$ удобно определить калибровкой: при закороченной обмотке
+$N_0$ ток синусоидален, и по показанию амперметра $I_{\text{эфф}}$ полная
+длина горизонтальной развёртки $[2X]$ соответствует удвоенной амплитуде
+тока:
+\begin{equation}
+    \label{eq:calib_x}
+    M_x = \frac{2\sqrt2\, I_{\text{эфф}}}{[2X]} .
+\end{equation}
+(С образцом калибровать нельзя: катушка с ферромагнетиком --- нелинейный
+элемент, и ток в ней несинусоидален.)
+
+\subsection{Измерение индукции. Интегрирующая цепочка}
+Если измерительная обмотка из $N_{\text{и}}$ витков плотно охватывает образец
+сечения $S$, то по закону электромагнитной индукции
+\begin{equation}
+    \label{eq:B_emf}
+    |B| = \frac{1}{SN_{\text{и}}}\int \mathcal{E}\,dt .
+\end{equation}
+Для интегрирования используется $RC$-цепочка (\cref{fig:rc}): ЭДС подаётся
+на последовательно соединённые $R_{\text{и}}$ и $C_{\text{и}}$, а
+напряжение снимается с конденсатора. Если сопротивление источника мало,
+входное сопротивление осциллографа велико, а $U_\vy \ll U_\vx$, то
+$I \approx U_\vx / R_{\text{и}}$ и
+\begin{equation}
+    \label{eq:integrator}
+    U_\vy = \frac{q}{C_{\text{и}}}
+    \approx \frac{1}{\tau_{\text{и}}}\int_0^t U_\vx\,dt,
+    \qquad \tau_{\text{и}} = R_{\text{и}} C_{\text{и}} .
+\end{equation}
+Отсюда
+\begin{equation}
+    \label{eq:B}
+    |B| = \frac{\tau_{\text{и}}}{SN_{\text{и}}}\, U_C, \qquad
+    B = b_y\,[Y], \qquad b_y = \frac{\tau_{\text{и}} K_y}{SN_{\text{и}}},
+\end{equation}
+где $K_y$ --- коэффициент отклонения канала $Y$.
+
+\begin{figure}[!ht]
+    \centering
+    \begin{circuitikz}
+        \draw (0,0) to[short, o-] (0.5,0) to[R, l=$R_{\text{и}}$] (3,0)
+              to[short, -o] (4.5,0);
+        \draw (3,0) to[C, l=$C_{\text{и}}$] (3,-2);
+        \draw (0,-2) to[short, o-o] (4.5,-2);
+        \draw (0,0) to[open, v=$U_\vx$] (0,-2);
+        \draw (4.5,0) to[open, v^=$U_\vy$] (4.5,-2);
+    \end{circuitikz}
+    \caption{Интегрирующая $RC$-ячейка}
+    \label{fig:rc}
+\end{figure}
+
+Для синусоидального сигнала частоты $\omega_0$ отношение амплитуд
+\begin{equation}
+    \frac{U_\vy}{U_\vx} = \frac{1/(\omega_0 C)}{\sqrt{R^2 + 1/(\omega_0C)^2}},
+\end{equation}
+так что условие применимости \cref{eq:integrator}
+\begin{equation}
+    \label{eq:tau_cond}
+    \omega_0\tau_{\text{и}} \gg 1,
+\end{equation}
+и тогда
+\begin{equation}
+    \label{eq:tau}
+    \frac{U_\vy}{U_\vx} \approx \frac{1}{\omega_0\tau_{\text{и}}}
+    \quad\Longrightarrow\quad
+    \tau_{\text{и}} = \frac{U_\vx}{\omega_0 U_\vy} .
+\end{equation}
+Если $\omega_0$ --- самая низкая гармоника несинусоидального сигнала, то
+при $\omega_0\tau \gg 1$ интегрирование корректно и для всех высших гармоник.
+
+\section{Используемое оборудование}
+\begin{itemize}
+    \item трансформаторный блок: регулировочный автотрансформатор и
+          разделительный понижающий трансформатор (сеть 220~В, 50~Гц);
+    \item тороидальные образцы с намагничивающей ($N_0$) и измерительной
+          ($N_{\text{и}}$) обмотками: \fillme;
+    \item резистор $R_0 = \res{R0}$~Ом в цепи намагничивающей обмотки;
+    \item интегрирующая $RC$-цепочка: $R_{\text{и}} = \res{Rint}$~кОм,
+          $C_{\text{и}} = \res{Cint}$~мкФ;
+    \item амперметр $A$ (действующее значение тока): \fillme;
+    \item вольтметр $V$, делитель напряжения 1:10, 1:100;
+    \item электронный осциллограф: \fillme.
+\end{itemize}
+
+\section{Экспериментальная установка и методика измерений}
+Схема установки показана на \cref{fig:setup}. Напряжение сети через
+трансформаторный блок $T$ подаётся на намагничивающую обмотку $N_0$
+образца, последовательно с которой включены амперметр $A$ и резистор $R_0$.
+Напряжение $U_R = R_0 I_0 \propto H$ подаётся на канал $X$ осциллографа.
+ЭДС измерительной обмотки $N_{\text{и}}$ интегрируется $RC$-цепочкой, и
+напряжение $U_C \propto B$ подаётся на канал $Y$. В режиме $X$--$Y$ на
+экране наблюдается петля гистерезиса в масштабах $h_x$, $b_y$
+(\cref{eq:hx,eq:B}).
+
+\begin{figure}[!ht]
+    \centering
+    \begin{circuitikz}[scale=0.95, transform shape]
+        % первичная цепь
+        \draw (0,0) to[sV, l_=$U_0$] (0,3)
+              to[rmeter, t=A] (2.6,3)
+              to[short] (3.4,3)
+              to[cute inductor, l_=$N_0$] (3.4,0)
+              to[R, l_=$R_0$] (0,0);
+        \node[left, align=center] at (-1.1,1.5) {\small $T$\\[-1mm]\small $\approx$220~В,\\[-1mm]\small 50~Гц};
+        \draw (3.4,0) to[short, *-o] (3.4,-1.1) node[below] {\small $X$};
+        \draw (0,0) to[short, *-o] (0,-1.1) node[below] {\small общий};
+        % сердечник
+        \draw[very thick] (4.05,0.2) -- (4.05,2.8);
+        \draw[very thick] (4.25,0.2) -- (4.25,2.8);
+        \node at (4.15,3.35) {\small образец};
+        % измерительная цепь
+        \draw (4.9,3) to[cute inductor, l=$N_{\text{и}}$] (4.9,0);
+        \draw (4.9,3) to[R, l=$R_{\text{и}}$] (8,3) to[C, l=$C_{\text{и}}$] (8,0) -- (4.9,0);
+        \draw (8,3) to[short, *-o] (9.4,3) node[right] {\small $Y$};
+        \draw (8,0) to[short, *-o] (9.4,0) node[right] {\small общий};
+    \end{circuitikz}
+    \caption{Схема установки (упрощённо; цепь калибровки канала $Y$ через
+             делитель и вольтметр $V$ не показана)}
+    \label{fig:setup}
+\end{figure}
+
+Порядок измерений:
+\begin{enumerate}
+    \item Подбирается ток в намагничивающей обмотке, при котором наблюдается
+          предельная петля (при изменении тока меняется лишь длина «усов»).
+          Коэффициенты $K_x$, $K_y$ выбираются так, чтобы петля занимала
+          б\'{о}льшую часть экрана (ручки плавной регулировки --- в
+          положении калибровки). Петля фотографируется.
+    \item По сетке экрана измеряются полные ширина и высота петли $[2X_s]$,
+          $[2Y_s]$, ширина петли на оси абсцисс $[2X_c]$ и высота на оси
+          ординат $[2Y_r]$.
+    \item Плавно уменьшая ток до нуля, отмечаются положения вершин
+          $8\div10$ частных петель $[2X_A]$, $[2Y_A]$ --- точки начальной
+          кривой намагничивания.
+    \item Измерения повторяются для всех образцов.
+    \item Калибровка канала $X$ по \cref{eq:calib_x} (обмотка $N_0$
+          закорочена) для всех использованных $K_x$; проверка канала $Y$
+          подачей известного напряжения через делитель 1:100.
+    \item Измерение отношения $U_\vx/U_\vy$ для $RC$-ячейки и расчёт
+          $\tau_{\text{и}}$ по \cref{eq:tau}.
+\end{enumerate}
+Погрешность отсчёта по сетке экрана принята равной $\pm0{,}1$~дел.
+
+\section{Результаты измерений и обработка данных}
+
+\subsection{Параметры образцов}
+Параметры тороидов (с установки) приведены в \cref{tab:samples}.
+
+\begin{table}[!ht]
+    \centering
+    \caption{Параметры образцов}
+    \label{tab:samples}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|c|c|c|},
+            hlines, vlines, row{1} = {font=\bfseries},
+        },
+        table head = {
+            № & Материал & $N_0$ & $N_{\text{и}}$ & $S$, см$^2$ & $2\pi R$, см \\
+        },
+    ]%
+    {../data/processed/samples_processed.csv}%
+    {sample=\cS, material=\cM, N0=\cN, N_i=\cNi, S_cm2=\cSs, L_cm=\cL}%
+    {\cS & \cM & $\cN$ & $\cNi$ & $\cSs$ & $\cL$}
+\end{table}
+
+\subsection{Калибровка канала $X$}
+Результаты калибровки при закороченной обмотке $N_0$ приведены в
+\cref{tab:calib_x}; $M_x^{\text{эксп}}$ рассчитано по \cref{eq:calib_x},
+$M_x^{\text{теор}} = K_x/R_0$.
+
+\begin{table}[!ht]
+    \centering
+    \caption{Калибровка канала $X$}
+    \label{tab:calib_x}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|c|c|c|},
+            hlines, vlines, row{1} = {font=\bfseries},
+        },
+        table head = {
+            $K_x$, мВ/дел & $I_{\text{эфф}}$, мА & $[2X]$, дел &
+            $M_x^{\text{эксп}}$, мА/дел & $M_x^{\text{теор}}$, мА/дел &
+            $\varepsilon$, \% \\
+        },
+    ]%
+    {../data/processed/calib_x_processed.csv}%
+    {Kx=\cK, I_eff_mA=\cI, X2=\cX, Mx_exp=\cMe, Mx_th=\cMt, dev_percent=\cD}%
+    {$\cK$ & $\cI$ & $\cX$ & $\cMe$ & $\cMt$ & $\cD$}
+\end{table}
+
+Эффективное сопротивление, определённое по калибровке,
+$R_0^{\text{эфф}} = K_x/M_x = \res{R0eff}$~Ом (номинал $R_0 = \res{R0}$~Ом).
+Относительная погрешность цены деления по току
+$\varepsilon_{M_x} \approx \res{epsMx}$~\% (класс амперметра и отсчёт длины
+развёртки).
+
+\subsection{Проверка калибровки канала $Y$}
+\begin{table}[!ht]
+    \centering
+    \caption{Проверка канала $Y$: $M_y = 2\sqrt2\,U_{\text{эфф}}/[2Y]$}
+    \label{tab:calib_y}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|c|c|},
+            hlines, vlines, row{1} = {font=\bfseries},
+        },
+        table head = {
+            $K_y$, мВ/дел & $U_{\text{эфф}}$, мВ & $[2Y]$, дел &
+            $M_y$, мВ/дел & $\varepsilon$, \% \\
+        },
+    ]%
+    {../data/processed/calib_y_processed.csv}%
+    {Ky=\cK, U_eff_mV=\cU, Y2=\cY, My_exp=\cM, dev_percent=\cD}%
+    {$\cK$ & $\cU$ & $\cY$ & $\cM$ & $\cD$}
+\end{table}
+
+Измеренная цена деления отличается от номинальной $K_y$ не более чем на
+$\res{devY}$~\% (\cref{tab:calib_y}), что согласуется с паспортной
+погрешностью осциллографа; в расчётах используются номинальные значения
+$K_y$.
+
+\subsection{Постоянная времени интегрирующей цепочки}
+\begin{table}[!ht]
+    \centering
+    \caption{Измерение постоянной времени $RC$-цепочки}
+    \label{tab:rc}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|c|},
+            hlines, vlines, row{1} = {font=\bfseries},
+        },
+        table head = {
+            $U_\vx$, мВ & $U_\vy$, мВ & $\nu$, Гц & $\tau_{\text{и}}$, мс \\
+        },
+    ]%
+    {../data/processed/rc_processed.csv}%
+    {U_in_mV=\cA, U_out_mV=\cB, nu_Hz=\cN, tau_ms=\cT}%
+    {$\cA$ & $\cB$ & $\cN$ & $\cT$}
+\end{table}
+
+По \cref{eq:tau}
+\begin{equation*}
+    \tau_{\text{и}}^{\text{эксп}} = (\res{tauExp})~\text{мс},
+    \qquad
+    \tau_{\text{и}}^{RC} = R_{\text{и}}C_{\text{и}} = \res{tauRC}~\text{мс};
+\end{equation*}
+расхождение составляет $\res{tauDev}$~\%. Условие \cref{eq:tau_cond}
+выполняется: $\omega_0\tau_{\text{и}} \approx \res{omegaTau} \gg 1$.
+В дальнейших расчётах используется $\tau_{\text{и}}^{\text{эксп}}$.
+
+\subsection{Предельные петли гистерезиса}
+Фотографии предельных петель приведены на \cref{fig:loops}.
+
+\begin{figure}[!ht]
+    \centering
+    \begin{subfigure}{0.32\textwidth}
+        \centering \labimage{loop_1.jpg}{1.0}
+        \caption{образец 1 (\res{mat1})}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.32\textwidth}
+        \centering \labimage{loop_2.jpg}{1.0}
+        \caption{образец 2 (\res{mat2})}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.32\textwidth}
+        \centering \labimage{loop_3.jpg}{1.0}
+        \caption{образец 3 (\res{mat3})}
+    \end{subfigure}
+    \caption{Предельные петли гистерезиса на экране осциллографа}
+    \label{fig:loops}
+\end{figure}
+
+Пересчёт делений в поля выполнен по \cref{eq:hx,eq:B}; для каждого образца
+$H_s = h_x[2X_s]/2$, $B_s = b_y[2Y_s]/2$, $H_c = h_x[2X_c]/2$,
+$B_r = b_y[2Y_r]/2$. Результаты сведены в \cref{tab:loops}. Погрешности
+включают погрешность отсчёта по экрану, калибровки канала $X$,
+коэффициента $K_y$ и постоянной времени $\tau_{\text{и}}$:
+\begin{equation*}
+    \varepsilon_H = \sqrt{\varepsilon_{M_x}^2 + \left(\frac{\Delta[X]}{[2X]}\right)^2},
+    \qquad
+    \varepsilon_B = \sqrt{\varepsilon_{K_y}^2 + \varepsilon_{\tau}^2
+                          + \left(\frac{\Delta[Y]}{[2Y]}\right)^2}.
+\end{equation*}
+
+\begin{table}[!ht]
+    \centering
+    \small
+    \caption{Характеристики предельных петель: $h_x$ и $b_y$ --- цены
+             деления при измерении $[2X_s]$, $[2Y_s]$}
+    \label{tab:loops}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|c|c|c|c|c|},
+            hlines, vlines, row{1} = {font=\bfseries},
+        },
+        table head = {
+            № & Материал & $h_x$, $\frac{\text{А/м}}{\text{дел}}$ &
+            $b_y$, $\frac{\text{Тл}}{\text{дел}}$ &
+            $H_s$, А/м & $B_s$, Тл & $H_c$, А/м & $B_r$, Тл \\
+        },
+    ]%
+    {../data/processed/loops_processed.csv}%
+    {sample=\cS, material=\cM, hx=\cH, by=\cB, Hs=\cHs, dHs=\cdHs,
+     Bs=\cBs, dBs=\cdBs, Hc=\cHc, dHc=\cdHc, Br=\cBr, dBr=\cdBr}%
+    {\cS & \cM & $\cH$ & $\cB$ & $\cHs\pm\cdHs$ & $\cBs\pm\cdBs$
+     & $\cHc\pm\cdHc$ & $\cBr\pm\cdBr$}
+\end{table}
+
+Потери на перемагничивание оценены по площади петли $A$ (в дел$^2$,
+по фотографии): $w = A\,h_x b_y$, $P/V = \nu_0 w$ (\cref{eq:loss}):
+\begin{center}
+\begin{tblr}{colspec={|c|c|c|c|}, hlines, vlines, row{1}={font=\bfseries}}
+    Образец & 1 & 2 & 3 \\
+    $w$, Дж/м$^3$ & $\res{w1}$ & $\res{w2}$ & $\res{w3}$ \\
+    $P/V$, кВт/м$^3$ & $\res{P1}$ & $\res{P2}$ & $\res{P3}$ \\
+\end{tblr}
+\end{center}
+
+\clearpage
+\subsection{Начальные кривые намагничивания}
+Вершины частных петель, пересчитанные в $H$ и $B$, показаны на
+\cref{fig:initial}; на \cref{fig:mudiff} --- дифференциальная
+проницаемость $\mu_{\text{диф}} = \Delta B/(\mu_0\Delta H)$, рассчитанная по
+соседним точкам.
+
+\begin{figure}[!ht]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            width=0.85\textwidth, height=0.55\textwidth,
+            xlabel={$H$, А/м}, ylabel={$B$, Тл},
+            xmin=0, ymin=0,
+            grid=both, minor tick num=1,
+            legend pos=south east,
+            scaled x ticks=false,
+        ]
+            \addplot[thick, mark=*] table[col sep=comma, x=H, y=B]
+                {../data/processed/initial_1.csv};
+            \addlegendentry{образец 1}
+            \addplot[thick, mark=square*] table[col sep=comma, x=H, y=B]
+                {../data/processed/initial_2.csv};
+            \addlegendentry{образец 2}
+            \addplot[thick, mark=triangle*] table[col sep=comma, x=H, y=B]
+                {../data/processed/initial_3.csv};
+            \addlegendentry{образец 3}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Начальные кривые намагничивания $B(H)$ (по вершинам частных петель)}
+    \label{fig:initial}
+\end{figure}
+
+\begin{figure}[!ht]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            width=0.85\textwidth, height=0.5\textwidth,
+            xlabel={$H$, А/м}, ylabel={$\mu_{\text{диф}}$},
+            xmin=0, ymin=0,
+            grid=both, minor tick num=1,
+            legend pos=north east,
+            scaled x ticks=false,
+        ]
+            \addplot[thick, mark=*] table[col sep=comma, x=H, y=mu_diff]
+                {../data/processed/mudiff_1.csv};
+            \addlegendentry{образец 1}
+            \addplot[thick, mark=square*] table[col sep=comma, x=H, y=mu_diff]
+                {../data/processed/mudiff_2.csv};
+            \addlegendentry{образец 2}
+            \addplot[thick, mark=triangle*] table[col sep=comma, x=H, y=mu_diff]
+                {../data/processed/mudiff_3.csv};
+            \addlegendentry{образец 3}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Дифференциальная магнитная проницаемость вдоль начальной кривой}
+    \label{fig:mudiff}
+\end{figure}
+
+\begin{table}[!ht]
+    \centering
+    \caption{Начальная и максимальная дифференциальная проницаемости}
+    \label{tab:mu}
+    \begin{tblr}{colspec={|c|c|c|c|}, hlines, vlines, row{1}={font=\bfseries}}
+        Образец & $\mu_{\text{нач}}$ & $\mu_{\text{диф}}^{\max}$ &
+            $H$ при $\mu_{\text{диф}}^{\max}$, А/м \\
+        1 & $\res{muInit1}$ & $\res{muMax1}$ & $\res{HmuMax1}$ \\
+        2 & $\res{muInit2}$ & $\res{muMax2}$ & $\res{HmuMax2}$ \\
+        3 & $\res{muInit3}$ & $\res{muMax3}$ & $\res{HmuMax3}$ \\
+    \end{tblr}
+\end{table}
+
+Начальная проницаемость оценена как $B/(\mu_0H)$ в первой (наименьшей по
+$H$) точке; поскольку частные петли при малых токах плохо различимы на
+экране, эта оценка грубая (погрешность порядка $20\div30$~\%).
+\fillme: описать вид кривых (участок быстрого роста, выход на насыщение).
+
+\section{Обсуждение результатов}
+Сравнение с типичными (справочными) значениями приведено в
+\cref{tab:compare}. Справочные значения относятся, как правило, к
+квазистатическому перемагничиванию; при частоте 50~Гц из-за вихревых токов
+петля «расширяется», поэтому динамическое $H_c$ обычно больше
+статического.
+
+\begin{table}[!ht]
+    \centering
+    \caption{Сравнение со справочными данными (порядок величины)}
+    \label{tab:compare}
+    \begin{tblr}{colspec={|l|c|c|c|c|}, hlines, vlines, row{1}={font=\bfseries}}
+        Материал & $H_c^{\text{эксп}}$, А/м & $H_c^{\text{спр}}$, А/м
+                 & $B_s^{\text{эксп}}$, Тл & $B_s^{\text{спр}}$, Тл \\
+        \res{mat1} & $\res{Hc1}$ & \qq & $\res{Bs1}$ & \qq \\
+        \res{mat2} & $\res{Hc2}$ & \qq & $\res{Bs2}$ & \qq \\
+        \res{mat3} & $\res{Hc3}$ & \qq & $\res{Bs3}$ & \qq \\
+    \end{tblr}
+\end{table}
+
+Ориентиры: феррит марганец-цинковый (2000НМ) --- $H_c \sim 10\div25$~А/м,
+$B_s \approx 0{,}35\div0{,}4$~Тл; пермаллой (79НМ) --- $H_c \sim 1\div5$~А/м,
+$B_s \approx 0{,}7\div0{,}8$~Тл; кремнистое (трансформаторное) железо ---
+$H_c \sim 10\div50$~А/м, $B_s \approx 1{,}5\div2$~Тл.
+
+\begin{itemize}
+    \item \fillme: какой из образцов магнитомягкий (наименьшее $H_c$),
+          какой обладает наибольшей индукцией насыщения и наибольшими
+          потерями.
+    \item Калибровка канала $X$ даёт $R_0^{\text{эфф}} = \res{R0eff}$~Ом,
+          что \fillme\ с номиналом $R_0 = \res{R0}$~Ом.
+    \item Постоянная времени, измеренная по \cref{eq:tau}, совпадает с
+          $R_{\text{и}}C_{\text{и}}$ с точностью $\res{tauDev}$~\%;
+          условие интегрирования $\omega_0\tau \gg 1$ выполнено с запасом
+          $\omega_0\tau \approx \res{omegaTau}$.
+    \item Основные источники погрешности: отсчёт по сетке экрана
+          (особенно для узких петель и малых частных петель), класс
+          амперметра, точность коэффициентов отклонения осциллографа.
+          Систематически: $U_\vy$ не пренебрежимо мало по сравнению с
+          $U_\vx$ (относительная поправка $\sim 1/(\omega_0\tau)^2$),
+          неоднородность поля по сечению тора ($H \propto 1/r$),
+          скин-эффект в проводящих образцах.
+\end{itemize}
+
+\section{Заключение}
+В работе динамическим методом (на частоте 50~Гц) исследованы петли
+гистерезиса трёх ферромагнитных образцов:
+\begin{itemize}
+    \item образец 1 (\res{mat1}): $H_c = (\res{Hc1})$~А/м,
+          $B_r = (\res{Br1})$~Тл, $B_s = (\res{Bs1})$~Тл при
+          $H_s = (\res{Hs1})$~А/м;
+    \item образец 2 (\res{mat2}): $H_c = (\res{Hc2})$~А/м,
+          $B_r = (\res{Br2})$~Тл, $B_s = (\res{Bs2})$~Тл при
+          $H_s = (\res{Hs2})$~А/м;
+    \item образец 3 (\res{mat3}): $H_c = (\res{Hc3})$~А/м,
+          $B_r = (\res{Br3})$~Тл, $B_s = (\res{Bs3})$~Тл при
+          $H_s = (\res{Hs3})$~А/м;
+    \item по начальным кривым намагничивания получены максимальные
+          дифференциальные проницаемости $\mu_{\text{диф}}^{\max} \approx
+          \res{muMax1}$, $\res{muMax2}$, $\res{muMax3}$ соответственно;
+    \item постоянная времени интегрирующей цепочки
+          $\tau_{\text{и}} = (\res{tauExp})$~мс, условие
+          $\omega_0\tau \gg 1$ выполнено.
+\end{itemize}
+\fillme: вывод о соответствии справочным данным.
+
+\end{document}

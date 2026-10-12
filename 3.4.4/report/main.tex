@@ -1,0 +1,517 @@
+\documentclass[a4paper,12pt]{article}
+
+% ===========================================================================
+%  Лабораторная работа 3.4.4 «Петля гистерезиса (статический метод)»
+%
+%  Сборка:  cd 3.4.4/report && latexmk -pdf main.tex
+%  Таблицы и графики читаются из ../data/processed/*.csv, итоговые числа --
+%  из ../data/processed/results.tex (макрос \res{...}). Всё это готовит
+%  ../scripts/process_data.py. До проведения измерений на месте чисел
+%  стоят метки ???.
+% ===========================================================================
+
+\input{../../common/latex_template/preamble.tex}
+
+\usepackage{longtable}
+\usepackage{caption}
+\usepackage{circuitikz}
+
+% Числа на осях: десятичная запятая, без разделителя тысяч
+\pgfplotsset{/pgf/number format/.cd, use comma, 1000 sep={}}
+
+% --- Служебные макросы ------------------------------------------------------
+\newcommand{\qq}{\textbf{???}}
+\newcommand{\fillme}{\textbf{?? НЕОБХОДИМО ЗАПОЛНИТЬ ??}}
+\newcommand{\filename}[1]{\texttt{\detokenize{#1}}}
+\IfFileExists{../data/processed/results.tex}{\input{../data/processed/results.tex}}{}
+\newcommand{\res}[1]{\ifcsname res@#1\endcsname\csname res@#1\endcsname\else\qq\fi}
+\newcommand{\cc}{\text{с}}   % индекс «соленоид»
+
+% Колонтитулы (как в остальных работах репозитория)
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{%
+    \IfFileExists{../../common/latex_template/miptlogo.png}{%
+        \includegraphics[height=1cm]{../../common/latex_template/miptlogo.png}%
+    }{%
+        \textbf{[ЛОГОТИП МФТИ]}%
+    }%
+}
+\fancyhead[R]{\textbf{Емельянов ДА, Байдин ФМ}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{33pt}
+
+\begin{document}
+
+% --- ТИТУЛЬНЫЙ ЛИСТ ---
+\begin{titlepage}
+\begin{center}
+    {\large МОСКОВСКИЙ ФИЗИКО-ТЕХНИЧЕСКИЙ ИНСТИТУТ}
+\end{center}
+\begin{center}
+    {\large Физтех-школа физики и исследований им. Ландау\break ЛФИ}
+\end{center}
+
+    \vspace{3cm}
+
+\vspace{0.15cm}
+{
+\begin{center}
+    \huge \bf Лабораторная работа №3.4.4 по курсу Общая физика\\
+    \vspace{0.4cm}
+    \LARGE Петля гистерезиса (статический метод).
+\end{center}
+}
+\vspace{1.5cm}
+\begin{flushright}
+Емельянов Дмитрий Алексеевич\\
+Байдин Фаддей Михайлович\\
+\vspace{0.4cm}
+Б02-502
+\end{flushright}
+\vspace{10cm}
+\begin{center}
+    \large \qq\ октября 2026, г. Долгопрудный
+\end{center}
+\end{titlepage}
+% ----------------------
+
+\section{Аннотация}
+В работе статическим (баллистическим) методом снимаются начальная кривая
+намагничивания и предельная петля гистерезиса тороидального образца из
+\fillme. Ток в намагничивающей обмотке меняется скачками; изменение
+магнитного потока при каждом скачке регистрируется баллистическим
+гальванометром, подключённым к измерительной обмотке. Гальванометр
+калибруется с помощью длинного пустотелого соленоида.
+
+По петле определяются коэрцитивное поле $H_c$, остаточная индукция $B_r$,
+индукция насыщения $B_s$ и намагниченность насыщения $M_s$, по начальной
+кривой --- максимальная дифференциальная магнитная проницаемость
+$\mu_{\text{диф}}$.
+
+\section{Теоретические сведения}
+
+\subsection{Кривая намагничивания и петля гистерезиса}
+Индукция $B$ и напряжённость $H$ в ферромагнетике связаны неоднозначно
+(\cref{fig:loop_theory}). При увеличении поля из размагниченного
+состояния образец намагничивается по \emph{начальной кривой} $OAC$. Кривая
+$OAC$ практически совпадает с $\mu_0 M(H)$, так как $B = \mu_0(H + M)$, а
+$\chi \gg 1$. В точке $C$ намагниченность достигает насыщения, и на
+участке $CD$
+\begin{equation}
+    \label{eq:sat}
+    B = \mu_0 M_s + \mu_0 H ,
+\end{equation}
+то есть $CD$ --- прямая с наклоном $\mu_0$, и её экстраполяция к $H = 0$
+даёт $\mu_0 M_s$. Индукцию в точке $C$ называют индукцией насыщения $B_s$.
+
+При уменьшении $H$ до нуля система проходит кривую $DCE$; в точке $E$
+($H = 0$) сохраняется \emph{остаточная индукция} $B_r$. Чтобы
+размагнитить образец (точка $F$), нужно приложить обратное
+\emph{коэрцитивное поле} $-H_c$. Замкнутая кривая $CEFC'E'F'C$,
+возникающая при циклическом перемагничивании с достижением насыщения, ---
+\emph{предельная петля гистерезиса}. Если начать уменьшать поле в
+промежуточной точке $A$, получится частная петля $AA'$ меньшей площади.
+
+\begin{figure}[!ht]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            width=0.62\textwidth, height=0.48\textwidth,
+            axis lines=middle, xlabel={$H$}, ylabel={$B$},
+            xmin=-4.2, xmax=4.6, ymin=-1.55, ymax=1.65,
+            xtick=\empty, ytick=\empty, samples=200, clip=false,
+        ]
+            \addplot[thick, domain=-3.6:3.6] {tanh((x+0.9)/0.55) + 0.05*x};
+            \addplot[thick, domain=-3.6:3.6] {tanh((x-0.9)/0.55) + 0.05*x};
+            \addplot[thick, dashed, domain=0:3.6] {tanh(x*x/1.6) + 0.05*x};
+            \addplot[densely dotted, domain=-1.3:1.3] {0.86*tanh((x+0.35)/0.45)};
+            \addplot[densely dotted, domain=-1.3:1.3] {0.86*tanh((x-0.35)/0.45)};
+            \fill (axis cs:0,0.934) circle (1.2pt) (axis cs:-0.9,0) circle (1.2pt)
+                  (axis cs:1.3,0.85) circle (1.2pt) (axis cs:-1.3,-0.85) circle (1.2pt)
+                  (axis cs:0,-0.934) circle (1.2pt) (axis cs:0.9,0) circle (1.2pt);
+            \node[above left]  at (axis cs:3.6,1.18) {$D$};
+            \node[above left]  at (axis cs:2.4,1.1) {$C$};
+            \node[below right] at (axis cs:-2.4,-1.1) {$C'$};
+            \node[below right] at (axis cs:-3.6,-1.18) {$D'$};
+            \node[below right] at (axis cs:0,0.95) {$E$};
+            \node[above left]  at (axis cs:0,-0.95) {$E'$};
+            \node[below left]  at (axis cs:-0.9,0) {$F$};
+            \node[above right] at (axis cs:0.9,0) {$F'$};
+            \node[right] at (axis cs:1.35,0.78) {$A$};
+            \node[left]  at (axis cs:-1.35,-0.78) {$A'$};
+            \node[below right] at (axis cs:0,0) {$O$};
+            \draw[gray, dashed] (axis cs:0,1.0) -- (axis cs:3.6,1.18);
+            \node[left] at (axis cs:0,1.08) {\small $\mu_0 M_s$};
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Петля гистерезиса ферромагнетика (схематично): $OE = B_r$,
+             $OF = H_c$}
+    \label{fig:loop_theory}
+\end{figure}
+
+Наклон кривой намагничивания характеризует дифференциальная магнитная
+проницаемость
+\begin{equation}
+    \label{eq:mu_diff}
+    \mu_{\text{диф}} = \frac{1}{\mu_0}\frac{dB}{dH}.
+\end{equation}
+
+\subsection{Измерение напряжённости}
+На тороидальный сердечник (\cref{fig:toroid}) равномерно намотана
+намагничивающая обмотка из $N$ витков. По теореме о циркуляции
+напряжённость на средней линии тора
+\begin{equation}
+    \label{eq:H}
+    H = \frac{N}{\pi D}\, I ,
+\end{equation}
+где $D$ --- средний диаметр тора (поле однородно при $d \ll D$).
+Для тора с замкнутым сердечником размагничивающий фактор равен нулю, и
+$H$ в образце совпадает с полем $H_0$, создаваемым токами обмотки.
+
+\begin{figure}[!ht]
+    \centering
+    \begin{tikzpicture}[scale=0.9]
+        \draw[thick] (0,0) circle (1.9);
+        \draw[thick] (0,0) circle (1.1);
+        \foreach \a in {0,15,...,345}
+            \draw ({1.0*cos(\a)},{1.0*sin(\a)}) -- ({2.0*cos(\a+4)},{2.0*sin(\a+4)});
+        \draw[<->] (-1.5,0) -- (1.5,0) node[midway, above] {$D$};
+        \draw[<->] (1.1,-0.35) -- (1.9,-0.35) node[midway, below] {$d$};
+        \node at (0,-2.4) {$N$, $N'$};
+    \end{tikzpicture}
+    \caption{Тороидальный образец с обмотками}
+    \label{fig:toroid}
+\end{figure}
+
+\subsection{Измерение индукции баллистическим гальванометром}
+Поверх намагничивающей обмотки намотана измерительная из $N'$ витков.
+При скачке тока $\Delta I$ меняется поле $H$ и поток через измерительную
+обмотку, в ней возникает ЭДС
+$\mathcal{E} = -SN'\,dB/dt$, $S = \pi d^2/4$. Гальванометр в
+баллистическом режиме отклоняется на величину, пропорциональную
+протекшему заряду: $\Delta x = \Delta q/b$, где $b$ --- баллистическая
+постоянная. Если $R$ --- полное сопротивление измерительной цепи,
+\begin{equation}
+    \label{eq:dx}
+    |\Delta x| = \frac{1}{b}\int I\,dt = \frac{1}{bR}\int\mathcal{E}\,dt
+    = \frac{SN'}{bR}\,|\Delta B| .
+\end{equation}
+
+Баллистическую постоянную исключают калибровкой: вместо тороида
+подключают длинный пустой соленоид ($N_\cc$ витков, длина $l_\cc$,
+диаметр $d_\cc$) с короткой измерительной катушкой из $N'_\cc$ витков.
+В соленоиде $B_\cc = \mu_0 N_\cc I_\cc / l_\cc$, и при изменении тока на
+$\Delta I_\cc$
+\begin{equation}
+    \label{eq:dx_c}
+    |\Delta x_\cc| = \frac{S_\cc N'_\cc}{bR_\cc}|\Delta B_\cc|
+    = \frac{\mu_0 S_\cc N'_\cc N_\cc}{bR_\cc l_\cc}|\Delta I_\cc| .
+\end{equation}
+Деля \cref{eq:dx} на \cref{eq:dx_c}, получаем
+\begin{equation}
+    \label{eq:dB}
+    \Delta B = \mu_0\,\frac{N_\cc N'_\cc}{N'}\,\frac{R}{R_\cc}
+               \left(\frac{d_\cc}{d}\right)^2
+               \frac{\Delta I_\cc}{l_\cc}\,
+               \frac{\Delta x}{\Delta x_\cc}
+             \equiv k_B\,\Delta x .
+\end{equation}
+Если при калибровке уменьшить сопротивление магазина на $R_\cc$
+($R'_{\text{М}} = R_{\text{М}} - R_\cc$), сопротивления измерительных цепей совпадают и
+$R/R_\cc = 1$.
+
+Индукция в каждой точке петли получается суммированием скачков:
+$B_n = B_0 + \sum_{i\le n}\Delta B_i$. Поскольку предельная петля
+симметрична относительно начала координат, индукция в начальной точке
+каждой ветви равна половине суммы всех скачков по этой ветви:
+$B(C) = \frac12\sum_{C\rightarrow C'}|\Delta B_i|$.
+
+\section{Используемое оборудование}
+\begin{itemize}
+    \item источник питания и генератор тока со ступенчатым тумблером;
+    \item тороид с обмотками: $N = \res{N}$, $N' = \res{Nm}$,
+          $D = \res{D}$~см, $d = \res{d}$~см; материал: \fillme;
+    \item калибровочный соленоид: $N_\cc = \res{Nc}$, $N'_\cc = \res{Ncm}$,
+          $l_\cc = \res{lc}$~см, $d_\cc = \res{dc}$~см,
+          $R_\cc = \res{Rc}$~Ом;
+    \item баллистический гальванометр с осветителем и шкалой,
+          $R_0 = \res{Rg}$~Ом;
+    \item амперметры $A_1$, $A_2$: \fillme;
+    \item магазин сопротивлений $R_{\text{М}}$;
+    \item ЛАТР и разделительный трансформатор (для размагничивания);
+    \item переключатели П1, П2, ключи К0, К2.
+\end{itemize}
+
+\section{Экспериментальная установка и методика измерений}
+Схема установки показана на \cref{fig:setup}. Генератор тока, питаемый от
+блока питания, позволяет скачками менять ток в намагничивающей обмотке $N$;
+ток измеряется амперметром, направление тока меняется переключателем П1.
+В цепь измерительной обмотки $N'$ включены гальванометр Г и магазин
+сопротивлений $R_{\text{М}}$, которым регулируется чувствительность. Ключ К2
+подключает гальванометр только на время измерения, ключ К0 закорачивает
+его для быстрой остановки «зайчика», П2 меняет направление тока через
+гальванометр. Для калибровки вместо тороида подключается соленоид.
+Для размагничивания тороид подключается к ЛАТРу, ток которого плавно
+(за $5\div10$~с) уменьшается от тока насыщения до нуля --- образец
+проходит 50 петель в секунду всё меньшей площади и приходит в точку
+$H = 0$, $B = 0$.
+
+\begin{figure}[!ht]
+    \centering
+    \begin{circuitikz}[scale=0.95, transform shape]
+        \draw (0,0) to[I, l=\small генератор тока] (0,3)
+              to[cspst, l=П1] (2,3)
+              to[rmeter, t=A] (3.6,3)
+              to[short] (4,3)
+              to[cute inductor, l_=$N$] (4,0) -- (0,0);
+        \draw[very thick] (4.65,0.2) -- (4.65,2.8);
+        \draw[very thick] (4.85,0.2) -- (4.85,2.8);
+        \node at (4.75,3.35) {\small тороид};
+        \draw (5.5,3) to[cute inductor, l=$N'$] (5.5,0);
+        \draw (5.5,3) to[R, l=$R_{\text{М}}$] (8,3) to[cspst, l=К2] (9.5,3)
+              to[rmeter, t=Г] (9.5,0) -- (5.5,0);
+        \draw (11,3) to[cspst, l=К0] (11,0);
+        \draw (9.5,3) -- (11,3);
+        \draw (9.5,0) -- (11,0);
+    \end{circuitikz}
+    \caption{Упрощённая схема установки (переключатель П2 и второй
+             амперметр не показаны)}
+    \label{fig:setup}
+\end{figure}
+
+Порядок измерений:
+\begin{enumerate}
+    \item Подбирается сопротивление $R_{\text{М}}$, при котором наибольший отброс
+          (на участках $EF$, $E'F'$) близок к концу шкалы.
+    \item \textbf{Предельная петля.} Начиная с максимального тока
+          (точка $C$), ток уменьшается щелчками тумблера; для каждого
+          положения записывается ток $I$ и отброс $\Delta x$. Вблизи $E$
+          фиксируются отбросы и при размыкании, и при замыкании П1 (смена
+          направления тока). Далее ток увеличивается до насыщения другого
+          знака ($C'$), направление тока через гальванометр меняется П2, и
+          петля проходится до точки $C$. Суммы отбросов по двум ветвям
+          должны совпадать (расхождение не более 10~\%).
+    \item \textbf{Калибровка.} Вместо тороида подключается соленоид,
+          $R'_{\text{М}} = R_{\text{М}} - R_\cc$; при размыкании П1 ($\Delta I_\cc = I_{\max}$)
+          измеряется отброс $\Delta x_\cc$.
+    \item \textbf{Начальная кривая.} Образец размагничивается, затем ток
+          скачками увеличивается от нуля до $I_{\max}$ с записью отбросов.
+\end{enumerate}
+Ток должен меняться строго монотонно; при сбое обход петли начинается
+заново от насыщения (для начальной кривой --- после повторного
+размагничивания).
+
+\section{Результаты измерений и обработка данных}
+
+\subsection{Параметры установки}
+$R_{\text{М}} = \res{RM}$~Ом, $R'_{\text{М}} = \res{RMp}$~Ом, $R_\cc = \res{Rc}$~Ом,
+сопротивление гальванометра $R_0 = \res{Rg}$~Ом. Параметры тороида и
+соленоида приведены в разделе 3. Коэффициент пересчёта тока в
+напряжённость по \cref{eq:H}:
+\begin{equation*}
+    H = h_I\,I, \qquad h_I = \frac{N}{\pi D} = \res{hI}~\text{м}^{-1}.
+\end{equation*}
+
+\subsection{Калибровка гальванометра}
+\begin{table}[!ht]
+    \centering
+    \caption{Калибровка гальванометра на соленоиде}
+    \label{tab:calib}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|},
+            hlines, vlines, row{1} = {font=\bfseries},
+        },
+        table head = {
+            $\Delta I_\cc$, мА & $\Delta x_\cc$, дел &
+            $\Delta I_\cc/\Delta x_\cc$, мА/дел \\
+        },
+    ]%
+    {../data/processed/calib_processed.csv}%
+    {dI_c_mA=\cI, dx_c=\cX, ratio=\cR}%
+    {$\cI$ & $\cX$ & $\cR$}
+\end{table}
+
+По данным \cref{tab:calib}
+$\Delta I_\cc/\Delta x_\cc = (\res{calRatio})$~мА/дел, и по \cref{eq:dB}
+цена деления шкалы по индукции
+\begin{equation*}
+    k_B = (\res{kB})~\text{мТл/дел}, \qquad \varepsilon_{k_B} \approx \res{epsK}~\%.
+\end{equation*}
+Погрешность $k_B$ складывается из погрешности отсчёта $\Delta x_\cc$,
+амперметра и геометрических параметров ($d^2$, $d_\cc^2$, $l_\cc$).
+
+\subsection{Предельная петля гистерезиса}
+Результаты измерений и пересчёта приведены в \cref{tab:loop}
+(приложение). Сумма отбросов по ветви $C\rightarrow C'$ равна $\res{sumDown}$~дел,
+по ветви $C'\rightarrow C$ --- $\res{sumUp}$~дел; расхождение $\res{sumMism}$~\%
+(допустимо до 10~\%). Петля и начальная кривая намагничивания построены на
+\cref{fig:loop}.
+
+\begin{figure}[!ht]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            width=0.9\textwidth, height=0.65\textwidth,
+            xlabel={$H$, А/м}, ylabel={$B$, Тл},
+            grid=both, minor tick num=1,
+            max space between ticks=45,
+            extra x ticks={0}, extra y ticks={0},
+            extra x tick labels={}, extra y tick labels={},
+            extra tick style={grid style={black, thin}},
+            legend pos=south east, legend cell align=left,
+            scaled x ticks=false,
+        ]
+            \addplot[thick, mark=*, mark size=1.5pt] table[col sep=comma, x=H, y=B]
+                {../data/processed/loop_down.csv};
+            \addlegendentry{ветвь $C \rightarrow C'$}
+            \addplot[thick, mark=square*, mark size=1.5pt] table[col sep=comma, x=H, y=B]
+                {../data/processed/loop_up.csv};
+            \addlegendentry{ветвь $C' \rightarrow C$}
+            \addplot[thick, dashed, mark=triangle*, mark size=1.8pt]
+                table[col sep=comma, x=H, y=B]
+                {../data/processed/initial_processed.csv};
+            \addlegendentry{начальная кривая}
+            \ifcsname res@satK\endcsname
+                \addplot[thin, domain=0:\csname res@satHmax\endcsname, samples=2]
+                    {\csname res@satK\endcsname*x + \csname res@satB\endcsname};
+                \addlegendentry{МНК на участке $CD$}
+            \fi
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Предельная петля гистерезиса и начальная кривая намагничивания}
+    \label{fig:loop}
+\end{figure}
+
+Из графика и таблицы:
+\begin{itemize}
+    \item коэрцитивное поле (среднее по двум ветвям, линейная интерполяция
+          между соседними точками)
+          $H_c = (\res{Hc})$~А/м;
+    \item остаточная индукция (точки с $I = 0$)
+          $B_r = (\res{Br})$~Тл;
+    \item индукция в точке $C$ при максимальном поле
+          $H_{\max} = (\res{Hmax})$~А/м ($I_{\max} = \res{Imax}$~мА):
+          $B_s \approx B(C) = (\res{Bmax})$~Тл;
+    \item аппроксимация $\res{nSat}$ точек с наибольшим $|H|$ прямой
+          \cref{eq:sat} даёт
+          $\mu_0 M_s = (\res{muMs})$~Тл, т.е.
+          $M_s = (\res{Ms})$~МА/м; наклон участка в единицах $\mu_0$ равен
+          $\res{slopeCD}$.
+\end{itemize}
+\fillme: если наклон участка $CD$ заметно больше $\mu_0$, насыщение при
+доступных токах достигнуто не полностью, и $M_s$ --- оценка снизу/сверху.
+
+Погрешность $B_r$ и $B_s$ складывается из погрешности $k_B$ и
+накопленной погрешности отсчётов при суммировании скачков
+($\Delta B \sim k_B\,\Delta x_{\text{отсч}}\sqrt{n}$); погрешность $H_c$ ---
+из погрешности амперметра и шага тока вблизи точки $F$.
+
+\subsection{Начальная кривая намагничивания}
+\begin{figure}[!ht]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            width=0.8\textwidth, height=0.5\textwidth,
+            xlabel={$H$, А/м}, ylabel={$\mu_{\text{диф}}$},
+            xmin=0, ymin=0, grid=both, minor tick num=1,
+            scaled x ticks=false,
+        ]
+            \addplot[thick, mark=*] table[col sep=comma, x=H, y=mu_diff]
+                {../data/processed/mudiff.csv};
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Дифференциальная проницаемость $\mu_{\text{диф}} =
+             \Delta B/(\mu_0\Delta H)$ вдоль начальной кривой}
+    \label{fig:mudiff}
+\end{figure}
+
+Максимальная дифференциальная проницаемость (наибольший наклон начальной
+кривой, \cref{fig:mudiff}) достигается при $H \approx \res{HmuMax}$~А/м:
+\begin{equation*}
+    \mu_{\text{диф}}^{\max} = \res{muMax}.
+\end{equation*}
+Наибольшее значение $\mu = B/(\mu_0H)$ вдоль начальной кривой
+$\mu_{\max} \approx \res{muBHmax}$, начальная проницаемость (по первой
+точке) $\mu_{\text{нач}} \approx \res{muInit}$.
+
+\section{Обсуждение результатов}
+\begin{itemize}
+    \item Для сравнения: техническое (армко) железо --- $H_c \sim
+          50\div100$~А/м, $B_s \approx 2{,}1$~Тл
+          ($\mu_0 M_s \approx 2{,}15$~Тл), $\mu_{\max} \sim 10^3\div10^4$;
+          конструкционная сталь --- $H_c \sim 10^2\div10^3$~А/м.
+          \fillme: сравнить полученные $H_c = \res{Hc}$~А/м,
+          $B_r = \res{Br}$~Тл, $\mu_0M_s = \res{muMs}$~Тл со справочными
+          данными для материала образца.
+    \item Совпадение сумм отбросов по ветвям ($\res{sumMism}$~\%)
+          показывает, что ни один отброс не пропущен и дрейф нуля
+          гальванометра мал.
+    \item Систематические погрешности: неоднородность поля по сечению тора
+          ($H\propto 1/r$), конечная длина калибровочного соленоида,
+          отклонение режима гальванометра от баллистического (при малом
+          $R_{\text{М}}$ --- переуспокоение), неполное размагничивание перед снятием
+          начальной кривой.
+\end{itemize}
+
+\section{Заключение}
+Статическим методом исследованы начальная кривая намагничивания и
+предельная петля гистерезиса образца из \fillme:
+\begin{itemize}
+    \item коэрцитивное поле $H_c = (\res{Hc})$~А/м;
+    \item остаточная индукция $B_r = (\res{Br})$~Тл;
+    \item индукция при максимальном поле $B_s = (\res{Bmax})$~Тл,
+          намагниченность насыщения $\mu_0 M_s = (\res{muMs})$~Тл;
+    \item максимальная дифференциальная проницаемость
+          $\mu_{\text{диф}}^{\max} = \res{muMax}$.
+\end{itemize}
+\fillme: вывод (магнитомягкий / магнитожёсткий материал, соответствие
+справочным данным).
+
+\clearpage
+\appendix
+\section{Таблица измерений предельной петли}
+\begingroup
+\small
+\csvreader[
+    longtable = |c|c|c|c|c|c|,
+    table head = {\caption{Измерения предельной петли (ток после щелчка,
+            отброс при щелчке, накопленная индукция)}\label{tab:loop}\\
+        \hline
+        Ветвь & $I$, мА & $H$, А/м & $\Delta x$, дел & $\Delta B$, мТл & $B$, Тл
+        \\\hline\endfirsthead
+        \hline
+        Ветвь & $I$, мА & $H$, А/м & $\Delta x$, дел & $\Delta B$, мТл & $B$, Тл
+        \\\hline\endhead
+        \hline\endfoot},
+    late after line = \\\hline,
+]%
+{../data/processed/loop_table.csv}%
+{branch=\cBr, I_mA=\cI, H=\cH, dx=\cX, dB=\cdB, B=\cB}%
+{\cBr & $\cI$ & $\cH$ & $\cX$ & $\cdB$ & $\cB$}
+\endgroup
+
+\section{Таблица измерений начальной кривой}
+\begingroup
+\small
+\csvreader[
+    longtable = |c|c|c|c|c|,
+    table head = {\caption{Измерения начальной кривой намагничивания}
+            \label{tab:initial}\\
+        \hline
+        $I$, мА & $H$, А/м & $\Delta x$, дел & $B$, Тл & $\mu = B/\mu_0H$
+        \\\hline\endfirsthead
+        \hline
+        $I$, мА & $H$, А/м & $\Delta x$, дел & $B$, Тл & $\mu = B/\mu_0H$
+        \\\hline\endhead
+        \hline\endfoot},
+    late after line = \\\hline,
+]%
+{../data/processed/initial_processed.csv}%
+{I_mA=\cI, H=\cH, dx=\cX, B=\cB, mu=\cM}%
+{$\cI$ & $\cH$ & $\cX$ & $\cB$ & $\cM$}
+\endgroup
+
+\end{document}

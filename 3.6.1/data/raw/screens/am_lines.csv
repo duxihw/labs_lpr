@@ -1,0 +1,5 @@
+# Отсчёты со скриншотов report/img/ (scripts/digitize_screens.py)
+line,nu_kHz,a_mV,sigma_nu_kHz,sigma_a_mV
+left,48.021,356.2,0.047,1.46
+main,50.023,707.9,0.047,1.46
+right,52.025,356.2,0.047,1.46

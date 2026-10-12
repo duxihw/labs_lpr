@@ -1,0 +1,24 @@
+# Отсчёты со скриншотов report/img/ (scripts/digitize_screens.py)
+screen,nu1_set_kHz,nu_kHz,a_mV,sigma_nu_kHz,sigma_a_mV
+spectrum_am_wide_1.png,50.0,212.23,0.973,0.745,0.088
+spectrum_am_wide_1.png,50.0,312.77,1.15,0.745,0.088
+spectrum_am_wide_1.png,50.0,412.55,1.327,0.745,0.088
+spectrum_am_wide_1.png,50.0,513.09,1.504,0.745,0.088
+spectrum_am_wide_1.png,50.0,612.87,1.77,0.745,0.088
+spectrum_am_wide_1.png,50.0,712.66,2.124,0.745,0.088
+spectrum_am_wide_2.png,50.0,212.23,0.973,0.745,0.088
+spectrum_am_wide_2.png,50.0,312.77,1.15,0.745,0.088
+spectrum_am_wide_2.png,50.0,412.55,1.327,0.745,0.088
+spectrum_am_wide_2.png,50.0,513.09,1.504,0.745,0.088
+spectrum_am_wide_2.png,50.0,612.87,1.77,0.745,0.088
+spectrum_am_wide_2.png,50.0,712.66,2.124,0.745,0.088
+spectrum_am_wide_3.png,100.0,63.3,2.566,0.745,0.088
+spectrum_am_wide_3.png,100.0,137.77,2.124,0.745,0.088
+spectrum_am_wide_3.png,100.0,262.87,3.009,0.745,0.088
+spectrum_am_wide_3.png,100.0,338.09,1.77,0.745,0.088
+spectrum_am_wide_3.png,100.0,425.21,0.973,0.745,0.088
+spectrum_am_wide_3.png,100.0,462.45,3.717,0.745,0.088
+spectrum_am_wide_3.png,100.0,537.66,1.504,0.745,0.088
+spectrum_am_wide_3.png,100.0,625.53,1.15,0.745,0.088
+spectrum_am_wide_3.png,100.0,662.77,4.69,0.745,0.088
+spectrum_am_wide_3.png,100.0,737.98,1.327,0.745,0.088

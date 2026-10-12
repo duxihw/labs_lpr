@@ -1,0 +1,565 @@
+\documentclass[a4paper,12pt]{article}
+
+% ===========================================================================
+%  Лабораторная работа 3.1.1 «Магнитометр»
+%
+%  Сборка:  cd 3.1.1/report && latexmk -pdf main.tex
+%  Таблицы читаются из ../data/processed/*.csv, а итоговые числа --
+%  из ../data/processed/results.tex; оба готовит ../scripts/process_data.py.
+%  Пока данных нет, на месте чисел стоит ???, на месте текста -- «?? НЕОБХОДИМО ЗАПОЛНИТЬ ??».
+% ===========================================================================
+
+\input{../../common/latex_template/preamble.tex}
+
+% Пакеты, нужные именно этой работе
+\usepackage{subcaption}
+\usepackage{circuitikz}
+\usetikzlibrary{arrows.meta, calc, angles, quotes}
+
+% --- Служебные макросы ------------------------------------------------------
+% Короткий пропуск (число, которое надо вписать после измерений)
+\newcommand{\qq}{\textbf{???}}
+% Пропуск, требующий осмысленного текста
+\newcommand{\fillme}{\textbf{?? НЕОБХОДИМО ЗАПОЛНИТЬ ??}}
+% Имя файла моноширинным шрифтом (символы «_» и т.п. экранировать не нужно)
+\newcommand{\filename}[1]{\texttt{\detokenize{#1}}}
+% Рисунок из report/img/; если файла ещё нет -- рамка-заглушка
+\newcommand{\labimage}[2]{%
+    \IfFileExists{img/#1}{%
+        \includegraphics[width=#2\linewidth]{img/#1}%
+    }{%
+        \fbox{\parbox[c][0.4\dimexpr#2\linewidth\relax][c]{%
+                \dimexpr#2\linewidth-2\fboxsep-2\fboxrule\relax}{%
+            \centering\small\filename{img/#1}\\[2mm]\fillme}}%
+    }%
+}
+% Итоговые числа из ../data/processed/results.tex (пишет process_data.py):
+%   \res{key} -> «значение \pm погрешность», \resv{key} -> значение,
+%   \ress{key} -> погрешность, \rese{key} -> относительная погрешность, %.
+% Ключи -- см. data/processed/fit_results.csv. Нет числа -- выводится ???.
+\InputIfFileExists{../data/processed/results.tex}{}{}
+\newcommand{\resget}[1]{\ifcsname res@#1\endcsname\csname res@#1\endcsname\else\qq\fi}
+\newcommand{\res}[1]{\resget{#1}}
+\newcommand{\resv}[1]{\resget{#1@v}}
+\newcommand{\ress}[1]{\resget{#1@s}}
+\newcommand{\rese}[1]{\resget{#1@e}}
+
+% Колонтитулы (как в остальных работах репозитория)
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{%
+    \IfFileExists{../../common/latex_template/miptlogo.png}{%
+        \includegraphics[height=1cm]{../../common/latex_template/miptlogo.png}%
+    }{%
+        \textbf{[ЛОГОТИП МФТИ]}%
+    }%
+}
+\fancyhead[R]{\textbf{Емельянов ДА, Байдин ФМ}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{33pt}
+
+\begin{document}
+
+% --- ТИТУЛЬНЫЙ ЛИСТ ---
+\begin{titlepage}
+\begin{center}
+    {\large МОСКОВСКИЙ ФИЗИКО-ТЕХНИЧЕСКИЙ ИНСТИТУТ}
+\end{center}
+\begin{center}
+    {\large Физтех-школа физики и исследований им. Ландау\break ЛФИ}
+\end{center}
+
+    \vspace{3cm}
+
+\vspace{0.15cm}
+{
+\begin{center}
+    \huge \bf Лабораторная работа №3.1.1 по курсу Общая физика\\
+    \vspace{0.4cm}
+    \LARGE Магнитометр.
+\end{center}
+}
+\vspace{1.5cm}
+\begin{flushright}
+Емельянов Дмитрий Алексеевич\\
+Байдин Фаддей Михайлович\\
+\vspace{0.4cm}
+Б02-502
+\end{flushright}
+\vspace{10cm}
+\begin{center}
+    \large \qq{} 2026, г. Долгопрудный
+\end{center}
+\end{titlepage}
+% ----------------------
+
+\section{Аннотация}
+Цель работы --- определить горизонтальную составляющую магнитного поля Земли
+$B_0$ и установить количественное соотношение между единицами
+электрического тока в системах СИ и СГС, т.\,е. измерить
+электродинамическую постоянную $c$.
+
+Поле $B_0$ находится с помощью электромагнитного магнитометра: измеряются
+угол отклонения магнитной стрелки в поле намагниченного стержня и период
+крутильных колебаний того же стержня в поле Земли, что позволяет исключить
+неизвестный магнитный момент стержня. Затем через витки магнитометра
+пропускается ток периодической разрядки конденсатора: по отклонению стрелки
+ток определяется в единицах СИ (по магнитному действию), а по
+протекающему заряду --- в гауссовых единицах. Отношение этих величин даёт
+$c$. Ожидается, что $B_0$ по порядку величины совпадёт со справочным
+значением для Московского региона (с поправкой на искажения поля в здании),
+а $c$ --- со скоростью света в вакууме.
+
+\section{Теоретические сведения}
+
+\subsection{Поле стержня и кругового тока}
+Магнитометр (\cref{fig:magnetometer}) состоит из $N$ последовательно
+соединённых круговых витков радиуса $R$, расположенных вертикально; в
+центре кольца на тонкой нити подвешена короткая магнитная стрелка. В
+отсутствие других полей стрелка устанавливается вдоль горизонтальной
+составляющей поля Земли $B_0$ (в плоскости магнитного меридиана), и кольцо
+поворотом совмещают с этой плоскостью.
+
+Поле намагниченного стержня с магнитным моментом $\mathfrak{m}$ вдали от
+него приближённо совпадает с полем точечного диполя
+\begin{equation}
+    \label{eq:dipole}
+    \mathbf{B}(\mathbf{r}) = \frac{\mu_0}{4\pi}
+    \left(\frac{3(\boldsymbol{\mathfrak{m}}\cdot\mathbf{r})\mathbf{r}}{r^5}
+          - \frac{\boldsymbol{\mathfrak{m}}}{r^3}\right).
+\end{equation}
+Стержень вставляется в гнездо Р на горизонтальном диаметре кольца так, что
+центр кольца лежит на оси, перпендикулярной стержню, на расстоянии $R$:
+\begin{equation}
+    \label{eq:B1}
+    B_1 = \frac{\mu_0}{4\pi}\frac{\mathfrak{m}}{R^3}.
+\end{equation}
+Поле в центре кольца с током $I$ по закону Био--Савара
+\begin{equation}
+    \label{eq:B2}
+    B_2 = \frac{\mu_0 I}{2R}N.
+\end{equation}
+Оба поля перпендикулярны плоскости кольца, т.\,е. плоскости меридиана, и
+в области стрелки однородны, так как размеры стрелки много меньше $R$.
+
+\subsection{Отклонение стрелки}
+При появлении перпендикулярного меридиану поля $B_\perp$ ($B_1$ или $B_2$)
+стрелка устанавливается вдоль суммарного поля и поворачивается на угол
+$\varphi$:
+\begin{equation}
+    \label{eq:tan}
+    B_\perp = B_0\operatorname{tg}\varphi.
+\end{equation}
+Угол измеряется по смещению $x$ светового зайчика, отражённого от
+зеркальца на стрелке, на шкале, удалённой на расстояние $L$
+(\cref{fig:magnetometer}). Отражённый луч поворачивается на $2\varphi$, и при
+малых углах
+\begin{equation}
+    \label{eq:tan_x}
+    \operatorname{tg}\varphi \approx \frac{x}{2L}.
+\end{equation}
+
+\subsection{Горизонтальная составляющая поля Земли}
+Чтобы исключить неизвестный момент $\mathfrak{m}$, измеряется период малых
+крутильных колебаний стержня, подвешенного за середину в поле $B_0$
+(упругостью нити пренебрегаем). Уравнение колебаний
+$J\ddot\alpha + \mathfrak{m}B_0\alpha = 0$ даёт
+\begin{equation}
+    \label{eq:period}
+    T = 2\pi\sqrt{\frac{J}{\mathfrak{m}B_0}},
+\end{equation}
+где момент инерции цилиндрического стержня массы $m$, длины $l$ и радиуса
+$r$ относительно оси, проходящей через середину перпендикулярно стержню,
+\begin{equation}
+    \label{eq:inertia}
+    J = m\left(\frac{l^2}{12} + \frac{r^2}{4}\right)
+      = \frac{ml^2}{12}\left[1 + 3\left(\frac{r}{l}\right)^2\right].
+\end{equation}
+Из \cref{eq:B1,eq:tan,eq:tan_x,eq:period} при $x = x_1$
+\begin{equation}
+    \label{eq:B0}
+    B_0 = \frac{1}{TR}\sqrt{\frac{2\pi\mu_0 J L}{R\,x_1}}
+    \quad[\text{СИ}].
+\end{equation}
+
+\subsection{Ток в единицах СИ и СГС}
+Пропуская ток через витки и измеряя отклонение $x_2$, из
+\cref{eq:B2,eq:tan,eq:tan_x} находим ток в единицах СИ (это соответствует
+определению ампера через магнитное действие тока):
+\begin{equation}
+    \label{eq:I_SI}
+    I = A\operatorname{tg}\varphi_2 = \frac{2B_0R}{\mu_0N}\,\frac{x_2}{2L}
+    \quad[\text{А}],
+    \qquad A = \frac{2B_0R}{\mu_0N},
+\end{equation}
+где $A$ --- постоянная прибора в данном месте комнаты.
+
+Тот же ток можно измерить по переносимому заряду (определение единицы тока
+в гауссовой системе). Если конденсатор ёмкости $C$, заряженный до
+напряжения $U$, $\nu$ раз в секунду разряжать через витки, средний ток
+\begin{equation}
+    \label{eq:I_CGS}
+    I = CU\nu \quad[\text{ед. СГС}],
+\end{equation}
+где $C$ выражается в сантиметрах ($1~\text{Ф} \approx 9\cdot10^{11}$~см), а
+$U$ --- в единицах СГС ($1~\text{В} \approx \frac{1}{300}$~ед. СГС).
+Отношение численных значений одного и того же тока даёт
+электродинамическую постоянную
+\begin{equation}
+    \label{eq:c}
+    c\left[\frac{\text{м}}{\text{с}}\right]
+    = \frac{1}{10}\,\frac{I[\text{СГС}]}{I[\text{СИ}]}.
+\end{equation}
+Соотношение \cref{eq:c} следует из определений единиц: $1~\text{А} =
+\frac{c[\text{см/с}]}{10}$~ед. СГС тока.
+
+\subsection{Основные допущения}
+\begin{itemize}
+    \item стержень --- точечный диполь (его длина мала по сравнению с $R$);
+    \item поля $B_1$, $B_2$ однородны в области стрелки;
+    \item поле в месте измерения периода $T$ совпадает с полем в центре
+          магнитометра (измерения проводятся рядом с прибором);
+    \item упругость нити подвеса стержня и стрелки пренебрежимо мала;
+    \item углы отклонения малы, $\operatorname{tg}2\varphi\approx2\operatorname{tg}\varphi$;
+    \item за время между замыканиями вибратора конденсатор успевает полностью
+          зарядиться и разрядиться.
+\end{itemize}
+
+\section{Методика измерений}
+
+\subsection{Схема установки}
+Схема магнитометра и оптической системы показана на
+\cref{fig:magnetometer}, фотография установки --- на \cref{fig:photo}. Осветитель О освещает два зеркала:
+З$_1$ на стрелке (подвижный зайчик) и З$_2$, жёстко связанное с кольцом
+(неподвижный зайчик). Совмещение зайчиков поворотом кольца означает, что
+плоскость витков совпадает с плоскостью магнитного меридиана.
+
+\begin{figure}[!ht]
+    \centering
+    \begin{tikzpicture}[scale=1.0, >=Stealth, font=\small]
+        % кольцо (вид сверху -- отрезок в плоскости меридиана)
+        \draw[line width=2.2pt, gray] (-2.6,0) -- (2.6,0);
+        \node[above left] at (-2.0,0.05) {К};
+        % гнездо Р со стержнем
+        \fill[black] (2.45,-0.35) rectangle (2.75,0.35);
+        \node[right] at (2.8,0) {Р (стержень)};
+        % стрелка с зеркалом
+        \draw[line width=1.4pt, rotate=25] (-0.6,0) -- (0.6,0);
+        \draw[line width=1.2pt, blue!70!black, rotate=25] (-0.05,-0.3) -- (-0.05,0.3);
+        \node[below right] at (0.15,-0.05) {С, З$_1$};
+        % поля
+        \draw[->, thick] (0,0) -- (2.0,0) node[below] {$B_0$};
+        \draw[->, thick] (0,0) -- (0,0.93) node[left] {$B_\perp$};
+        \draw[->, thick, red!70!black] (0,0) -- (2.0,0.93) node[above right] {$B_\Sigma$};
+        \draw (0.9,0) arc (0:25:0.9);
+        \node at (1.1,0.22) {$\varphi$};
+        % шкала и осветитель
+        \draw[line width=1.6pt] (-2.6,-4) -- (2.6,-4);
+        \foreach \x in {-2.5,-2.25,...,2.5} \draw (\x,-4) -- (\x,-3.9);
+        \node[below] at (-2.4,-4.05) {Ш};
+        \node[draw, minimum width=8mm, minimum height=5mm] (O) at (-0.9,-4.6) {О};
+        % лучи
+        \draw[dashed, orange!80!black] (0,-4) -- (0,0);
+        \draw[->, orange!80!black, thick] (0,0) -- (1.86,-4);
+        \draw (0,-1.2) arc (-90:-65:1.2);
+        \node at (0.28,-1.55) {$2\varphi$};
+        \draw[<->] (0,-4.35) -- (1.86,-4.35) node[midway, below] {$x$};
+        \draw[<->] (-3.0,0) -- (-3.0,-4) node[midway, left] {$L$};
+    \end{tikzpicture}
+    \caption{Схема магнитометра (вид сверху) и измерения угла отклонения
+             стрелки: К --- витки, С --- стрелка с зеркалом З$_1$,
+             Р --- гнездо для стержня, Ш --- шкала, О --- осветитель}
+    \label{fig:magnetometer}
+\end{figure}
+
+\begin{figure}[!ht]
+    \centering
+    \labimage{setup_photo.jpg}{0.6}
+    \caption{Фотография установки (по желанию)}
+    \label{fig:photo}
+\end{figure}
+
+Для измерения тока витки подключаются к схеме \cref{fig:circuit}:
+электромагнитное реле (вибратор) с частотой $\nu$ попеременно подключает
+конденсатор $C$ то к источнику (зарядка до напряжения $U$, измеряемого
+вольтметром), то к виткам магнитометра (разрядка).
+
+\begin{figure}[!ht]
+    \centering
+    \begin{circuitikz}[font=\small]
+        \draw (0,0) to[V, l=$\mathcal{E}$] (0,3) -- (3.4,3);
+        \draw (3.4,3) node[ocirc]{};
+        \draw (4.6,3) node[ocirc]{} -- (5.6,3)
+              to[nos, l=ключ] (7.4,3)
+              to[L, l=витки К] (7.4,0) -- (0,0);
+        \draw (4,2.4) node[circ]{} -- (3.48,2.93);
+        \node[above] at (4,3.1) {реле, $\nu$};
+        \draw (4,2.4) to[C, l_=$C$] (4,0);
+        \draw (4,2.4) -- (2.4,2.4) to[voltmeter, l_=$U$] (2.4,0);
+    \end{circuitikz}
+    \caption{Схема питания витков магнитометра}
+    \label{fig:circuit}
+\end{figure}
+
+\subsection{Порядок измерений}
+\begin{enumerate}
+    \item Совмещаются зайчики (кольцо --- в плоскости меридиана).
+    \item В гнездо Р вставляется стержень, измеряется смещение $x_1$; стержень
+          переворачивается, измеряется смещение в другую сторону. Расхождение
+          не должно превышать 5\,\%.
+    \item Измеряется расстояние $L$ от шкалы до зеркала.
+    \item Рядом с магнитометром измеряется время $t$ нескольких ($N_\text{кол}$)
+          крутильных колебаний стержня, $T = t/N_\text{кол}$. Число
+          колебаний выбирается так, чтобы $\sigma_T/T \le 1\,\%$:
+          $N_\text{кол} \ge \sigma_t/(0{,}01\,T)$.
+    \item Штангенциркулем измеряются длина $l$ и диаметр $d = 2r$ стержня.
+    \item По \cref{eq:inertia,eq:B0} рассчитывается $B_0$.
+    \item Собирается схема \cref{fig:circuit}; при работающем вибраторе
+          измеряются $U$ и отклонение $x_2$ при двух полярностях.
+    \item По \cref{eq:I_SI,eq:I_CGS,eq:c} вычисляются токи и $c$.
+\end{enumerate}
+
+Обработка выполняется скриптом \filename{scripts/process_data.py}.
+Погрешности косвенных величин находятся по формулам для степенных
+зависимостей; например, для \cref{eq:B0}
+\begin{equation}
+    \label{eq:sigma_B0}
+    \varepsilon_{B_0} = \sqrt{\varepsilon_T^2 + \left(\tfrac32\varepsilon_R\right)^2
+        + \left(\tfrac12\varepsilon_J\right)^2 + \left(\tfrac12\varepsilon_L\right)^2
+        + \left(\tfrac12\varepsilon_{x_1}\right)^2},
+    \qquad
+    \varepsilon_J = \sqrt{\varepsilon_m^2 + (2\varepsilon_l)^2},
+\end{equation}
+где $\varepsilon_a = \sigma_a/a$. Погрешность прямых многократных измерений
+складывается из случайной (СКО среднего) и приборной. Поскольку $I[\text{СИ}]$
+вычисляется через $B_0$, при оценке $\varepsilon_c$ учитывается, что после
+подстановки \cref{eq:B0} в \cref{eq:I_SI}
+$I[\text{СИ}] \propto T^{-1}R^{-1/2}J^{1/2}L^{-1/2}x_1^{-1/2}x_2$.
+
+\section{Используемое оборудование}
+
+\begin{table}[!ht]
+    \centering
+    \caption{Измерительные приборы и их погрешности}
+    \label{tab:equipment}
+    \begin{tblr}{colspec={|X[2,l]|X[2,l]|X[1.4,c]|}, hlines, vlines,
+                 row{1}={font=\bfseries}, width=\textwidth}
+        Прибор & Измеряемая величина & Погрешность \\
+        Магнитометр (осветитель, шкала) & смещение зайчика $x$ & $\sigma_x = \qq$~мм \\
+        Рулетка & расстояние $L$ & $\sigma_L = \qq$~см \\
+        Штангенциркуль & $l$, $d$ стержня & $\qq$~мм \\
+        Секундомер & время колебаний $t$ & $\sigma_t = \qq$~с \\
+        Вольтметр \qq & напряжение $U$ & $\sigma_U = \qq$~В \\
+        Конденсатор (на установке) & ёмкость $C = \qq$~мкФ & $\qq$ \\
+        Электромагнитный переключатель (вибратор) & частота $\nu = \qq$~Гц & $\qq$ \\
+        Стержень (на установке) & масса $m = \qq$~г & $\qq$ \\
+    \end{tblr}
+\end{table}
+
+Также используются источник питания ($U \approx 90\div100$~В), ключ и
+прибор для определения периода крутильных колебаний (стеклянный сосуд со
+спицей и нитью). Параметры магнитометра: $R = \qq$~см, $N = \qq$.
+
+Предварительная оценка: наибольший вклад в погрешность $B_0$ ожидается от
+радиуса кольца (входит в степени $3/2$) и периода $T$; в погрешность $c$ ---
+от $T$, $x_2$ и ёмкости $C$. \fillme
+
+\section{Результаты измерений и обработка данных}
+
+\subsection{Параметры установки}
+Все параметры установки записаны в \filename{data/raw/setup_params.csv}:
+\begin{itemize}
+    \item радиус кольца $R = \qq$~см, число витков $N = \qq$;
+    \item расстояние от шкалы до зеркала $L = \qq$~см;
+    \item масса стержня $m = \qq$~г;
+    \item ёмкость $C = \qq$~мкФ, частота вибратора $\nu = \qq$~Гц.
+\end{itemize}
+
+\subsection{А. Горизонтальная составляющая магнитного поля Земли}
+
+\paragraph{Отклонение стрелки в поле стержня.}
+Результаты измерения смещения зайчика при двух ориентациях стержня
+приведены в \cref{tab:deflection}.
+
+\begin{table}[!ht]
+    \centering
+    \caption{Смещение подвижного зайчика в поле намагниченного стержня;
+             $\delta$ --- относительное расхождение $x_1^+$ и $x_1^-$}
+    \label{tab:deflection}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|c|c|},
+            hlines, vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {
+            \textbf{№} & \textbf{$x_1^+$, мм} & \textbf{$x_1^-$, мм}
+            & \textbf{$x_1$, мм} & \textbf{$\delta$, \%} \\
+        }
+    ]%
+    {../data/processed/deflection_rod_processed.csv}%
+    {trial=\csvN, x1_plus_mm=\csvXp, x1_minus_mm=\csvXm, x1_mm=\csvX, dev_percent=\csvDev}%
+    {%
+        ${}\csvN$ & ${}\csvXp$ & ${}\csvXm$ & ${}\csvX$ & ${}\csvDev$
+    }
+\end{table}
+
+Среднее смещение $x_1 = \res{xone}$~мм ($\varepsilon = \rese{xone}$\,\%),
+$\operatorname{tg}\varphi_1 = x_1/2L = \res{tgone}$.
+
+\paragraph{Момент инерции стержня.}
+Размеры стержня приведены в \cref{tab:rod}.
+
+\begin{table}[!ht]
+    \centering
+    \caption{Размеры намагниченного стержня}
+    \label{tab:rod}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|},
+            hlines, vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {
+            \textbf{№} & \textbf{$l$, мм} & \textbf{$d$, мм} \\
+        }
+    ]%
+    {../data/processed/rod_size_processed.csv}%
+    {trial=\csvN, l_mm=\csvL, d_mm=\csvD}%
+    {%
+        ${}\csvN$ & ${}\csvL$ & ${}\csvD$
+    }
+\end{table}
+
+$l = \res{lrod}$~мм, $d = \res{drod}$~мм. Поправка $3(r/l)^2 = \res{corr}$\,\%.
+По \cref{eq:inertia}
+\begin{equation}
+    J = (\res{J})\cdot10^{-7}~\text{кг}\cdot\text{м}^2,
+    \qquad \varepsilon_J = \rese{J}\,\%.
+\end{equation}
+
+\paragraph{Период крутильных колебаний.}
+Результаты приведены в \cref{tab:period}.
+
+\begin{table}[!ht]
+    \centering
+    \caption{Период крутильных колебаний стержня в поле Земли;
+             $\sigma_T = \sigma_t/N_\text{кол}$ --- приборная погрешность}
+    \label{tab:period}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|c|c|},
+            hlines, vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {
+            \textbf{№} & \textbf{$N_\text{кол}$} & \textbf{$t$, с}
+            & \textbf{$T$, с} & \textbf{$\sigma_T$, с} \\
+        }
+    ]%
+    {../data/processed/rod_period_processed.csv}%
+    {trial=\csvN, N_osc=\csvNosc, t_s=\csvT, T_s=\csvPer, sigma_T_s=\csvSPer}%
+    {%
+        ${}\csvN$ & ${}\csvNosc$ & ${}\csvT$ & ${}\csvPer$ & ${}\csvSPer$
+    }
+\end{table}
+
+\begin{equation}
+    T = \res{T}~\text{с}, \qquad \varepsilon_T = \rese{T}\,\%.
+\end{equation}
+
+\paragraph{Результат.}
+По \cref{eq:B0,eq:sigma_B0}
+\begin{equation}
+    \label{eq:B0_result}
+    B_0 = \res{Bzero}~\text{мкТл} = \res{Bzerogs}~\text{Гс},
+    \qquad \varepsilon_{B_0} = \rese{Bzero}\,\%.
+\end{equation}
+Магнитный момент стержня, найденный из \cref{eq:period},
+$\mathfrak{m} = \res{mrod}$~мА$\cdot$м$^2$.
+
+Справочное значение горизонтальной составляющей поля Земли для
+Долгопрудного (модель WMM или IGRF): $B_0^\text{спр} = \qq$~мкТл.
+
+\subsection{Б. Электродинамическая постоянная}
+Постоянная прибора \cref{eq:I_SI}: $A = \res{A}$~мА. Результаты измерения
+тока приведены в \cref{tab:current}; $x_2$ --- среднее отклонение при двух
+полярностях.
+
+\begin{table}[!ht]
+    \centering
+    \caption{Измерение тока через витки магнитометра двумя способами}
+    \label{tab:current}
+    \small
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|c|c|c|c|c|c|},
+            hlines, vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {
+            \textbf{№} & \textbf{$U$, В} & \textbf{$x_2^+$, мм} & \textbf{$x_2^-$, мм}
+            & \textbf{$x_2$, мм} & \textbf{$\operatorname{tg}\varphi_2$}
+            & \textbf{$I_\text{СИ}$, мА} & \textbf{$I_\text{СГС}$, $10^6$ ед.}
+            & \textbf{$c$, $10^8$ м/с} \\
+        }
+    ]%
+    {../data/processed/current_processed.csv}%
+    {trial=\csvN, U_V=\csvU, x2_plus_mm=\csvXp, x2_minus_mm=\csvXm, x2_mm=\csvX,
+     tg_phi2=\csvTg, I_SI_mA=\csvIsi, I_CGS_1e6=\csvIcgs, c_1e8=\csvC}%
+    {%
+        ${}\csvN$ & ${}\csvU$ & ${}\csvXp$ & ${}\csvXm$ & ${}\csvX$ & ${}\csvTg$
+        & ${}\csvIsi$ & ${}\csvIcgs$ & ${}\csvC$
+    }
+\end{table}
+
+По средним значениям $U = \res{U}$~В и $x_2 = \res{xtwo}$~мм:
+\begin{equation}
+    I[\text{СИ}] = \res{ISI}~\text{мА},
+    \qquad
+    I[\text{СГС}] = (\res{ICGS})\cdot10^{6}~\text{ед. СГС}.
+\end{equation}
+По \cref{eq:c}
+\begin{equation}
+    \label{eq:c_result}
+    c = (\res{c})\cdot10^8~\text{м/с},
+    \qquad \varepsilon_c = \rese{c}\,\%.
+\end{equation}
+Отклонение от табличного значения $c = 2{,}998\cdot10^8$~м/с составляет
+$\res{cdev}$\,\%.
+
+\section{Обсуждение результатов}
+\begin{itemize}
+    \item Точность $B_0$: основной вклад в $\varepsilon_{B_0}$ вносит \fillme.
+    \item Сравнение $B_0 = \res{Bzero}$~мкТл со справочным значением
+          $\qq$~мкТл: \fillme. Магнитометр находится в железобетонном здании,
+          поэтому измеряемое поле может заметно отличаться от поля Земли
+          (арматура, токонесущие провода, приборы), а также различаться в
+          месте измерения $T$ и в центре магнитометра.
+    \item Значение $c$ не зависит от того, совпадает ли $B_0$ с полем Земли:
+          важно лишь, чтобы при измерении $x_1$, $T$ и $x_2$ поле было одним
+          и тем же. \fillme
+    \item Применимость допущений: длина стержня $l = \res{lrod}$~мм по
+          сравнению с $R$ (дипольное приближение); малость углов
+          $\varphi_1$, $\varphi_2$; полная разрядка конденсатора за время
+          $1/(2\nu)$. \fillme
+    \item Возможные источники ошибок и способы их уменьшения: \fillme.
+\end{itemize}
+
+\section{Заключение}
+\begin{itemize}
+    \item Горизонтальная составляющая магнитного поля в месте установки:
+          $B_0 = \res{Bzero}$~мкТл ($\varepsilon = \rese{Bzero}$\,\%);
+          справочное значение $\qq$~мкТл.
+    \item Электродинамическая постоянная:
+          $c = (\res{c})\cdot10^8$~м/с ($\varepsilon = \rese{c}$\,\%),
+          что \fillme{} с табличным значением.
+\end{itemize}
+\fillme
+
+\appendix
+\section{Лабораторный журнал}
+\labimage{journal.jpg}{1.0}
+
+\end{document}

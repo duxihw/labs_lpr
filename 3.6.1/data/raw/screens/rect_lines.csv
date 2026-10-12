@@ -1,0 +1,20 @@
+# Отсчёты со скриншотов report/img/ (scripts/digitize_screens.py)
+screen,T_ms,tau_us,n,nu_kHz,a_mV,clipped,sigma_nu_kHz,sigma_a_mV
+spectrum_rect_nu1.png,1.0,50.0,1,0.9998,4.705,1,0.0035,0.009
+spectrum_rect_nu1.png,1.0,50.0,2,1.9995,4.705,1,0.0035,0.009
+spectrum_rect_nu1.png,1.0,50.0,3,2.9993,4.705,1,0.0035,0.009
+spectrum_rect_nu2.png,0.5,50.0,1,2.001,13.897,0,0.0063,0.04
+spectrum_rect_nu2.png,0.5,50.0,2,3.999,13.212,0,0.0063,0.04
+spectrum_rect_nu2.png,0.5,50.0,3,6.0,12.124,0,0.0063,0.04
+spectrum_rect_nu3.png,0.33333,50.0,1,3.0,20.1,1,0.0063,0.04
+spectrum_rect_nu3.png,0.33333,50.0,2,6.0,18.207,0,0.0063,0.04
+spectrum_rect_nu4.png,0.2,50.0,1,5.001,20.1,1,0.0063,0.04
+spectrum_rect_tau100.png,0.5,100.0,1,2.001,20.1,1,0.0063,0.04
+spectrum_rect_tau100.png,0.5,100.0,2,3.999,20.1,1,0.0063,0.04
+spectrum_rect_tau100.png,0.5,100.0,3,6.0,14.259,0,0.0063,0.04
+spectrum_rect_tau200.png,0.5,200.0,1,2.001,20.1,1,0.0063,0.04
+spectrum_rect_tau200.png,0.5,200.0,2,3.999,13.212,0,0.0063,0.04
+spectrum_rect_tau200.png,0.5,200.0,3,5.9969,8.821,0,0.0063,0.04
+spectrum_rect_tau250.png,0.5,250.0,1,2.001,20.1,1,0.0063,0.04
+spectrum_rect_tau250.png,0.5,250.0,2,3.999,0.161,0,0.0063,0.04
+spectrum_rect_tau250.png,0.5,250.0,3,6.0,14.984,0,0.0063,0.04

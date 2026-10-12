@@ -4,8 +4,9 @@
 %  Лабораторная работа 3.6.1 «Спектральный анализ электрических сигналов»
 %
 %  Сборка:  cd 3.6.1/report && pdflatex main.tex  (или latexmk -pdf main.tex)
-%  Таблицы и графики читаются из ../data/processed/*.csv,
-%  которые готовит ../scripts/process_data.py.
+%  Таблицы, графики и числа в тексте читаются из ../data/processed/
+%  (*.csv и fit_macros.tex), которые готовит ../scripts/process_data.py
+%  по отсчётам со скриншотов (../scripts/digitize_screens.py).
 %
 % ===========================================================================
 
@@ -55,6 +56,14 @@
 \renewcommand{\headrulewidth}{0.4pt}
 \setlength{\headheight}{33pt}
 
+% Числовые результаты обработки (генерирует scripts/process_data.py)
+\input{../data/processed/fit_macros.tex}
+
+% Числа из CSV печатаются с десятичной запятой
+\pgfkeys{/pgf/number format/.cd, use comma, 1000 sep={}, precision=4}
+\newcommand{\pn}[1]{\pgfmathprintnumber{#1}}
+\setlength{\emergencystretch}{2em}
+
 \begin{document}
 
 % --- ТИТУЛЬНЫЙ ЛИСТ ---
@@ -93,16 +102,20 @@
 \section{Аннотация}
 В работе изучаются спектры периодических электрических сигналов различной
 формы и влияние параметров сигнала на вид его спектра. С помощью генератора
-сигналов формируются последовательности прямоугольных импульсов, цугов
-синусоиды, а также синусоидальные сигналы, модулированные по амплитуде; их
-спектры наблюдаются с помощью USB-осциллографа в режиме быстрого
-преобразования Фурье (БПФ).
+сигналов формируются последовательности прямоугольных импульсов (в том числе
+меандр), цугов синусоиды, а также синусоидальный сигнал, модулированный по
+амплитуде; их спектры наблюдаются с помощью USB-осциллографа в режиме
+быстрого преобразования Фурье (БПФ).
 
-Измеряются амплитуды и частоты гармоник и сравниваются с рассчитанными по
-теории Фурье, проверяются соотношения неопределённостей
-$\Delta\nu\cdot\tau\simeq1$ и $\delta\nu\cdot T=1$, теорема смещения и
-соотношение $a_{\text{бок}}/a_{\text{осн}} = m/2$ для АМ-сигнала. Качественно
-рассмотрено прохождение прямоугольных импульсов через $RC$-цепочку.
+Измерены частоты и амплитуды гармоник, результаты
+сравнены с рассчитанными по теории Фурье, проверены соотношения
+неопределённостей $\Delta\nu\cdot\tau\simeq1$ и $\delta\nu\cdot T=1$,
+теорема смещения и соотношение $a_{\text{бок}}/a_{\text{осн}} = m/2$ для
+АМ-сигнала. На спектре меандра в широком диапазоне частот наблюдалось
+наложение частот (теорема Котельникова) и определена частота дискретизации
+спектроанализатора. По осциллограмме сигнала на выходе $RC$-цепочки
+определена её постоянная времени $\tau_{RC}$, спектр выходного сигнала
+сопоставлен с частотной характеристикой фильтра.
 
 \section{Теоретические сведения}
 
@@ -135,8 +148,8 @@ $\Delta\nu\cdot\tau\simeq1$ и $\delta\nu\cdot T=1$, теорема смещен
 
 При измерениях на осциллографе доступны только амплитуды $|a_n|$ (информация
 о фазах теряется), а единицы измерения амплитуд произвольны, поэтому
-сравнивать теорию и эксперимент следует по \emph{относительным} величинам
-$|a_n/a_1|$.
+сравнивать теорию и эксперимент следует по \emph{относительным} величинам,
+например $|a_n/a_1|$.
 
 \subsection{Спектр последовательности прямоугольных импульсов}
 Для периодической последовательности прямоугольных импульсов амплитуды
@@ -145,7 +158,8 @@ $V_0$, длительности $\tau$ и периода $T$ коэффицие�
     \label{eq:rect_spectrum}
     \nu_n = \frac{n}{T},
     \qquad
-    |a_n| = 2V_0\frac{\tau}{T}\,\frac{|\sin \pi\nu_n\tau|}{\pi\nu_n\tau}.
+    |a_n| = 2V_0\frac{\tau}{T}\,\frac{|\sin \pi\nu_n\tau|}{\pi\nu_n\tau}
+    = \frac{2V_0}{\pi}\cdot\frac{\bigl|\sin\frac{\pi n\tau}{T}\bigr|}{n}.
 \end{equation}
 Огибающая спектра имеет вид $|\operatorname{sinc}(\pi\nu\tau)|$ и обращается в
 ноль на частотах $\nu = k/\tau$, $k=1,2,\dots$ Относительные амплитуды,
@@ -155,6 +169,14 @@ $V_0$, длительности $\tau$ и периода $T$ коэффицие�
     \left|\frac{a_n}{a_1}\right|
     = \frac{\bigl|\sin\frac{\pi n \tau}{T}\bigr|}
            {n\,\bigl|\sin\frac{\pi\tau}{T}\bigr|}.
+\end{equation}
+Частный случай $\tau = T/2$ --- \emph{меандр}: все чётные гармоники
+обращаются в ноль, а нечётные убывают как $1/n$:
+\begin{equation}
+    \label{eq:meander}
+    |a_n| = \frac{2V_0}{\pi n}\quad (n = 1, 3, 5, \dots),
+    \qquad
+    \left|\frac{a_n}{a_1}\right| = \frac1n.
 \end{equation}
 
 \subsection{Соотношения неопределённостей}
@@ -189,12 +211,13 @@ $V_0$, длительности $\tau$ и периода $T$ коэффицие�
     \tfrac12\, a_g(\nu-\nu_0) + \tfrac12\, a_g(\nu+\nu_0).
 \end{equation}
 Последовательность цугов --- это произведение синусоиды с частотой
-$\nu_0$ на последовательность прямоугольных импульсов длительности
-$\tau = N/\nu_0$ ($N$ --- число периодов синусоиды в цуге) с периодом
-повторения $T$. Поэтому её спектр --- «сдвинутый» спектр прямоугольных
-импульсов: он симметричен относительно $\nu_0$, гармоники расположены с шагом
-$\delta\nu = 1/T$, а расстояние от центра спектра до первого нуля огибающей
-равно
+$\nu_0$ и амплитудой $A$ на последовательность прямоугольных импульсов
+длительности $\tau = N/\nu_0$ ($N$ --- число периодов синусоиды в цуге) с
+периодом повторения $T$. Поэтому её спектр --- «сдвинутый» спектр
+прямоугольных импульсов: гармоники расположены с шагом $\delta\nu = 1/T$,
+огибающая $A\frac{\tau}{T}\,|\operatorname{sinc}\pi(\nu-\nu_0)\tau|$ имеет
+максимум вблизи $\nu_0$, а расстояние от центра спектра до первого нуля
+огибающей равно
 \begin{equation}
     \label{eq:burst_width}
     \Delta\nu = \frac{1}{\tau} = \frac{\nu_0}{N}.
@@ -217,6 +240,21 @@ $\delta\nu = 1/T$, а расстояние от центра спектра до
     m = \frac{A_{\max}-A_{\min}}{A_{\max}+A_{\min}}.
 \end{equation}
 
+\subsection{Дискретизация сигнала и наложение частот}
+Цифровой спектроанализатор оцифровывает сигнал с частотой
+$\nu_{\text{дискр}}$ и надёжно воспроизводит лишь составляющие с
+$\nu < \nu_{\text{дискр}}/2$ (теорема Котельникова). Составляющая с
+частотой $\nu > \nu_{\text{дискр}}/2$ не пропадает, а после дискретизации
+неотличима от составляющей с частотой
+\begin{equation}
+    \label{eq:alias}
+    \nu' = \bigl|\nu - k\,\nu_{\text{дискр}}\bigr|,
+    \qquad k = 1, 2, \dots,
+    \qquad 0 \leqslant \nu' \leqslant \nu_{\text{дискр}}/2,
+\end{equation}
+т.\,е. «зеркально отражается» в видимую полосу (наложение, англ.
+\emph{aliasing}).
+
 \subsection{Фильтрация сигнала $RC$-цепочкой}
 $RC$-цепочка (\cref{fig:rc_scheme}) --- фильтр низких частот. Для
 гармонического сигнала частоты $\nu$ отношение амплитуд напряжения на
@@ -229,7 +267,18 @@ $RC$-цепочка (\cref{fig:rc_scheme}) --- фильтр низких час�
 \end{equation}
 Согласно принципу суперпозиции, каждая гармоника сигнала фильтруется
 независимо: высокочастотные гармоники подавляются сильнее низкочастотных,
-поэтому резкие фронты импульсов сглаживаются.
+поэтому резкие фронты импульсов сглаживаются. При $2\pi\nu\tau_{RC}\gg1$
+$K(\nu)\approx 1/(2\pi\nu\tau_{RC})$ --- цепочка работает как
+интегратор, и амплитуды гармоник выходного сигнала убывают как $1/n$
+быстрее, чем у входного.
+
+Во временном представлении на каждом участке, где входное напряжение
+постоянно и равно $U_\infty$, напряжение на конденсаторе релаксирует к нему
+экспоненциально:
+\begin{equation}
+    \label{eq:rc_transient}
+    U(t) = U_\infty + \bigl(U(0) - U_\infty\bigr)\,e^{-t/\tau_{RC}}.
+\end{equation}
 
 \section{Используемое оборудование}
 \begin{itemize}
@@ -256,9 +305,26 @@ $RC$-цепочка (\cref{fig:rc_scheme}) --- фильтр низких час�
 $\nu < \nu_{\text{дискр}}/2$.
 
 Частоты $\nu_n$ и амплитуды $|a_n|$ спектральных линий, ширина спектра
-$\Delta\nu$ и расстояние между соседними линиями $\delta\nu$ измеряются
-с помощью курсоров. Погрешности коэффициентов линейных зависимостей
-оцениваются по разбросу точек методом наименьших квадратов (скрипт
+$\Delta\nu$ и расстояние между соседними линиями $\delta\nu$ в частях А и Б
+измерялись с помощью курсоров спектроанализатора. Ширина спектра
+определялась по номеру гармоники с нулевой амплитудой, поэтому её
+погрешность принималась равной половине шага гармоник $\delta\nu/2$.
+Количественные данные частей А и Б (\cref{tab:harmonics,tab:width,tab:spacing,tab:bursts})
+получены на той же установке другой бригадой и используются с согласия
+автора и преподавателя; спектрограммы на рисунках --- собственные.
+
+Для спектров меандра, АМ-сигнала и сигнала на выходе $RC$-цепочки
+частоты и амплитуды снимались с сохранённых изображений экрана
+спектроанализатора по шкалам осей (скрипт
+\filename{scripts/digitize_screens.py}, отсчёты хранятся в
+\filename{data/raw/screens/}). Погрешность такого отсчёта принималась
+равной цене одного пикселя изображения: по частоте $0{,}75$~кГц (спектр
+в диапазоне $0\div780$~кГц), $0{,}05$~кГц (АМ), $3$~кГц ($RC$-цепочка); по
+амплитуде $0{,}09$~мВ, $1{,}5$~мВ и $0{,}1$~мВ соответственно.
+
+Амплитуды приведены в единицах шкалы осциллографа (мВ); для проверки
+теории используются их отношения. Параметры аппроксимаций и их
+погрешности находились методом наименьших квадратов (скрипт
 \filename{scripts/process_data.py}).
 
 В части Е собирается схема, показанная на \cref{fig:rc_scheme}: сигнал с
@@ -283,20 +349,25 @@ $\Delta\nu$ и расстояние между соседними линиями
 
 \section{Результаты измерений и обработка данных}
 
-\subsection{Параметры установки}
+\subsection{Параметры сигналов}
 \begin{itemize}
-    \item прямоугольные импульсы (измерение гармоник): $T = 1$~мс
-          ($\nu_{\text{повт}} = 1$~кГц), $\tau = 50$~мкс $= T/20$;
-    \item измерение $\Delta\nu(1/\tau)$: $T = 1$~мс, $\tau = 20\div200$~мкс;
+    \item амплитуды гармоник: $T = 1$~мс ($\nu_{\text{повт}} = 1$~кГц),
+          $\tau = T/20 = 50$~мкс;
+    \item измерение $\Delta\nu(1/\tau)$: $T = 1$~мс,
+          $\tau = 20\div200$~мкс ($T/50\div T/5$);
     \item измерение $\delta\nu(1/T)$: $\tau = 100$~мкс,
-          $\nu_{\text{повт}} = 0{,}1\div5$~кГц;
-    \item цуги: $\nu_0 = 30\div50$~кГц, $\nu_{\text{повт}} = 1$~кГц,
-          $N = 5\div20$;
-    \item АМ-сигнал: $\nu_0 = 50$~кГц, $\nu_{\text{мод}} = 2$~кГц,
-          $m = 10\div100$~\%.
+          $T = 2\tau\div50\tau$ ($0{,}2\div5$~мс);
+    \item спектрограммы прямоугольных импульсов: $\tau = 50$~мкс,
+          $\nu_{\text{повт}} = 1;\ 2;\ 3;\ 5$~кГц и $\nu_{\text{повт}} = 2$~кГц,
+          $\tau = 50\div250$~мкс;
+    \item меандр ($\tau = T/2$) с частотой $50$ и $100$~кГц,
+          диапазон спектроанализатора $0\div780$~кГц;
+    \item цуги: $\nu_0 = 30\div50$~кГц, $N = 5\div20$,
+          $T = 1\div4$~мс;
+    \item АМ-сигнал: $\nu_0 = 50$~кГц, $\nu_{\text{мод}} = 2$~кГц;
+    \item $RC$-цепочка: прямоугольные импульсы с $T \approx 3$~мкс,
+          $\tau \approx T/20$.
 \end{itemize}
-Все перечисленные величины продублированы в файле
-\filename{data/raw/setup_params.csv} и используются скриптами обработки.
 
 \subsection{А. Качественное исследование спектра прямоугольных импульсов}
 Спектры последовательности прямоугольных импульсов при различных параметрах
@@ -305,12 +376,26 @@ $\Delta\nu$ и расстояние между соседними линиями
     \item При увеличении частоты повторения $\nu_{\text{повт}}$ и
           фиксированной длительности $\tau = 50$~мкс
           (\cref{fig:rect_spectra_nu}) расстояние между компонентами спектра
-          увеличивается: $\delta\nu = \nu_{\text{повт}} = 1/T$.
+          растёт: линии стоят на частотах, кратных $1$, $2$, $3$ и $5$~кГц,
+          т.\,е. $\delta\nu = \nu_{\text{повт}} = 1/T$. Одновременно растут
+          амплитуды гармоник: при фиксированном $\tau$ они пропорциональны
+          скважности $\tau/T$ (\cref{eq:rect_spectrum}). При
+          $\nu_{\text{повт}} \geqslant 3$~кГц первая гармоника выходит за
+          верхнюю границу экрана ($20{,}1$~мВ), а при
+          $\nu_{\text{повт}} = 1$~кГц спектр снят в более чувствительном
+          масштабе ($4{,}7$~мВ на весь экран) и зашкаливают все линии.
     \item При увеличении длительности импульса $\tau$ и фиксированной
           $\nu_{\text{повт}} = 2$~кГц (\cref{fig:rect_spectra_tau})
-          расстояние между гармониками не меняется, а ширина спектра
-          $\Delta\nu = 1/\tau$ уменьшается: амплитуды гармоник спадают с
-          номером тем быстрее, чем длиннее импульс.
+          расстояние между гармониками не меняется, а огибающая спектра
+          сужается: амплитуды спадают с номером гармоники тем быстрее, чем
+          длиннее импульс. При $\tau = 250$~мкс $= T/2$ первый нуль
+          огибающей $1/\tau = 4$~кГц совпадает со второй гармоникой, и она
+          исчезает из спектра.
+    \item Между основными линиями видны слабые побочные пики (не более
+          $1{,}7$~мВ, т.\,е. $\lesssim 10$~\% от амплитуды гармоник),
+          положение которых не зависит от параметров сигнала; это
+          паразитные составляющие («краевые эффекты» окна БПФ и наводки),
+          в обработке они не учитывались.
 \end{itemize}
 
 \begin{figure}[!ht]
@@ -318,7 +403,7 @@ $\Delta\nu$ и расстояние между соседними линиями
     \begin{subfigure}{0.48\textwidth}
         \centering
         \labimage{spectrum_rect_nu1.png}{1.0}
-        \caption{$\nu_{\text{повт}} = 1$~кГц}
+        \caption{$\nu_{\text{повт}} = 1$~кГц (шкала $4{,}7$~мВ)}
     \end{subfigure}
     \hfill
     \begin{subfigure}{0.48\textwidth}
@@ -337,7 +422,7 @@ $\Delta\nu$ и расстояние между соседними линиями
     \begin{subfigure}{0.48\textwidth}
         \centering
         \labimage{spectrum_rect_nu4.png}{1.0}
-        \caption{$\nu_{\text{повт}} = 4$~кГц}
+        \caption{$\nu_{\text{повт}} = 5$~кГц}
     \end{subfigure}
     \caption{Спектры последовательности прямоугольных импульсов при
              $\tau = 50$~мкс и различных частотах повторения}
@@ -377,53 +462,37 @@ $\Delta\nu$ и расстояние между соседними линиями
 
 \clearpage
 \subsection{А. Амплитуды и частоты гармоник}
-При $T = 1$~мс и $\tau = 50$~мкс измерены частоты и амплитуды гармоник
-спектра; амплитуда первой гармоники $a_1 = 143{,}8$~мВ. Теоретические
-значения рассчитаны по \cref{eq:rect_spectrum,eq:rect_ratio}, результаты
-приведены в \cref{tab:harmonics}.
+При $T = 1$~мс и $\tau = T/20 = 50$~мкс измерены частоты и амплитуды
+первых восьми гармоник; амплитуда первой гармоники $a_1 = \aOne$~мВ.
+Теоретические значения рассчитаны по \cref{eq:rect_spectrum,eq:rect_ratio},
+результаты приведены в \cref{tab:harmonics} и на \cref{fig:harmonics}.
 
 \begin{table}[!ht]
     \centering
-    \caption{Частоты и относительные амплитуды гармоник прямоугольного
-             сигнала. Последний столбец --- относительное отклонение
-             эксперимента от теории}
+    \caption{Частоты и относительные амплитуды гармоник прямоугольных
+             импульсов ($T = 1$~мс, $\tau = 50$~мкс); $\varepsilon$ ---
+             относительное отклонение эксперимента от теории}
     \label{tab:harmonics}
-
     \csvreader[
+        separator = semicolon,
         tabularray = {
             colspec = {|c|c|c|c|c|c|c|},
-            hlines,
-            vlines,
+            hlines, vlines,
             row{1} = {font=\bfseries},
         },
         table head = {
-            \textbf{$n$}
-            &
-            \textbf{$\nu_n^{\text{эксп}}$, кГц}
-            &
-            \textbf{$\nu_n^{\text{теор}}$, кГц}
-            &
-            \textbf{$|a_n|$, мВ}
-            &
-            \textbf{$|a_n/a_1|^{\text{эксп}}$}
-            &
-            \textbf{$|a_n/a_1|^{\text{теор}}$}
-            &
-            \textbf{$\varepsilon$, \%}
-            \\
+            $n$ & $\nu_n^{\text{эксп}}$, кГц & $\nu_n^{\text{теор}}$, кГц
+            & $|a_n|$, мВ & $|a_n/a_1|^{\text{эксп}}$
+            & $|a_n/a_1|^{\text{теор}}$ & $\varepsilon$, \% \\
         }
     ]%
     {../data/processed/harmonics_processed.csv}%
-    {n=\csvN, nu_exp_kHz=\csvNuExp, nu_theor_kHz=\csvNuTh, a_exp_mV=\csvA,
-     ratio_exp=\csvRatio, ratio_theor=\csvRatioTh, dev_percent=\csvDev}%
-    {%
-        $\csvN$ & $\csvNuExp$ & $\csvNuTh$ & $\csvA$
-        & $\csvRatio$ & $\csvRatioTh$ & $\csvDev$
-    }
+    {n=\cN, nu_exp_kHz=\cNuE, nu_theor_kHz=\cNuT, a_exp_mV=\cA,
+     ratio_exp=\cR, ratio_theor=\cRT, dev_percent=\cDev}%
+    {$\cN$ & $\pn{\cNuE}$ & $\pn{\cNuT}$ & $\pn{\cA}$
+     & $\pgfmathprintnumber[fixed, zerofill, precision=3]{\cR}$
+     & $\pgfmathprintnumber[fixed, zerofill, precision=3]{\cRT}$ & \cDev}
 \end{table}
-
-Измеренные относительные амплитуды и теоретическая огибающая
-$|\operatorname{sinc}(\pi\nu\tau)|$ показаны на \cref{fig:harmonics}.
 
 \begin{figure}[!ht]
     \centering
@@ -432,31 +501,21 @@ $|\operatorname{sinc}(\pi\nu\tau)|$ показаны на \cref{fig:harmonics}.
             width=0.8\textwidth,
             height=0.5\textwidth,
             xlabel={$\nu$, кГц},
-            ylabel={$|a_n/a_1|$, отн. ед.},
+            ylabel={$|a_n/a_1|$},
             xmin=0, xmax=21, ymin=0, ymax=1.05,
             grid=both,
             minor tick num=1,
             legend pos=north east,
+            legend cell align=left,
         ]
-
-            \addplot[
-                only marks,
-                mark=*,
-            ]
-            table[
-                col sep=comma,
-                x=nu_exp_kHz,
-                y=ratio_exp,
-            ] {../data/processed/harmonics_processed.csv};
+            \addplot[only marks, mark=*]
+            table[col sep=semicolon, x=nu_exp_kHz, y=ratio_exp]
+                {../data/processed/harmonics_processed.csv};
             \addlegendentry{Эксперимент}
-
-            % Теоретическая огибающая: tau = 0.05 мс (= 50 мкс),
-            % нормировка на первую гармонику: sinc(pi*0.05) = 0.99589
-            \addplot[
-                no marks, thick, domain=0.01:21, samples=300,
-            ] {abs(sin(deg(pi*x*0.05))/(pi*x*0.05))/0.99589};
-            \addlegendentry{$|\operatorname{sinc}(\pi\nu\tau)|$}
-
+            % огибающая |sinc(pi nu tau)|, tau = 0,05 мс, нормировка на n = 1
+            \addplot[no marks, thick, domain=0.01:21, samples=300]
+                {abs(sin(deg(pi*x*0.05))/(pi*x*0.05))/0.995893};
+            \addlegendentry{$|\operatorname{sinc}(\pi\nu\tau)|$, $\tau = 50$~мкс}
         \end{axis}
     \end{tikzpicture}
     \caption{Относительные амплитуды гармоник и теоретическая огибающая
@@ -464,50 +523,195 @@ $|\operatorname{sinc}(\pi\nu\tau)|$ показаны на \cref{fig:harmonics}.
     \label{fig:harmonics}
 \end{figure}
 
-Частоты гармоник совпадают с теоретическими $\nu_n = n/T$ с точностью не
-хуже $1{,}6$~\%. Относительные амплитуды систематически ниже
-теоретических: отклонение растёт с номером гармоники от $3$~\% при $n=5$
-до $\approx 14$~\% при $n = 13\div15$; для $n = 19$, где амплитуда близка к
-нулю огибающей ($\nu = 20$~кГц), относительное отклонение достигает $34$~\%.
-Систематическое занижение амплитуд высоких гармоник характерно для реального
-импульса с конечным временем нарастания фронтов, а вблизи нуля огибающей
-относительная погрешность велика из-за малости самой амплитуды.
+Частоты гармоник совпадают с теоретическими $\nu_n = n/T$ в пределах
+точности отсчёта. Относительные амплитуды совпадают с рассчитанными по
+\cref{eq:rect_ratio} с точностью лучше $1$~\%, но систематически немного
+ниже теоретических: для $n = 2\div8$ отклонение лежит в пределах
+от $\hDevMin$ до $\hDevMax$~\%, в среднем $\hDevMean$~\%. Такое систематическое занижение
+соответствует чуть более широкому импульсу: аппроксимация огибающей по
+\cref{eq:rect_ratio} с $\tau$ в качестве свободного параметра даёт
+$\tau = \tauEnv$~мкс, т.\,е. на $\approx1{,}4$~\% больше установленного
+значения. Это может быть связано с конечной длительностью фронтов
+реального импульса и точностью установки $\tau$ на генераторе.
+
+Первый нуль огибающей при этих параметрах лежит на $1/\tau = 20$~кГц
+(\cref{fig:harmonics}); вид спектра в целом соответствует спектрограмме
+на \cref{fig:rect_spectra_nu}\,(а), где при выбранном масштабе вершины
+линий выходят за границу экрана.
+
+\subsection{А. Спектр меандра в широком диапазоне частот. Наложение частот}
+Спектры меандра с частотой $\nu_1 = 50$ и $100$~кГц в полосе
+$0\div\screenEdge$~кГц показаны на \cref{fig:meander_screens}. В спектре
+присутствуют только нечётные гармоники $\nu_n = n\nu_1$: амплитуды чётных
+не превышают $\evenMax$~мВ ($\evenRel\,a_1$), что соответствует
+$\tau = T/2$ (\cref{eq:meander}). По положению нечётных гармоник
+$\nu_1 = \nuMeandA$~кГц и $\nuMeandB$~кГц. Спектры (а) и (б) сняты при
+одинаковых настройках и совпадают.
+
+\begin{figure}[!ht]
+    \centering
+    \begin{subfigure}{0.32\textwidth}
+        \centering
+        \labimage{spectrum_am_wide_1.png}{1.0}
+        \caption{$\nu_1 = 50$~кГц}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.32\textwidth}
+        \centering
+        \labimage{spectrum_am_wide_2.png}{1.0}
+        \caption{$\nu_1 = 50$~кГц, повтор}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.32\textwidth}
+        \centering
+        \labimage{spectrum_am_wide_3.png}{1.0}
+        \caption{$\nu_1 = 100$~кГц}
+    \end{subfigure}
+    \caption{Спектры меандра в диапазоне $0\div780$~кГц}
+    \label{fig:meander_screens}
+\end{figure}
+
+\begin{table}[!ht]
+    \centering
+    \small
+    \caption{Нечётные гармоники меандра (частоты исправлены на смещение
+             шкалы $\approx 0{,}4$~кГц, найденное по МНК)}
+    \label{tab:meander}
+    \csvreader[
+        separator = semicolon,
+        tabularray = {
+            colspec = {|c|c|c|c|c|c|c|},
+            hlines, vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {
+            $\nu_1$, кГц & $n$ & $\nu_n$, кГц & $|a_n|$, мВ
+            & $|a_n/a_1|$ & $1/n$ & $n|a_n/a_1|$ \\
+        }
+    ]%
+    {../data/processed/meander_processed.csv}%
+    {nu1_kHz=\cNuOne, n=\cN, nu_kHz=\cNu, a_mV=\cA, ratio=\cR, inv_n=\cIn,
+     n_ratio=\cNR}%
+    {$\cNuOne$ & $\cN$ & $\pn{\cNu}$ & $\pn{\cA}$ & $\pn{\cR}$ & $\pn{\cIn}$ & $\pn{\cNR}$}
+\end{table}
+
+\begin{figure}[!ht]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            width=0.8\textwidth,
+            height=0.5\textwidth,
+            xlabel={$1/n$},
+            ylabel={$|a_n/a_1|$},
+            xmin=0, xmax=1.05, ymin=0, ymax=1.05,
+            grid=both,
+            minor tick num=1,
+            legend pos=north west,
+            legend cell align=left,
+        ]
+            \addplot[only marks, mark=*]
+            table[col sep=semicolon, x=inv_n, y=ratio, restrict expr to domain={\thisrow{nu1_kHz}}{50:50}]
+                {../data/processed/meander_processed.csv};
+            \addlegendentry{$\nu_1 = 50$~кГц}
+            \addplot[only marks, mark=square, mark size=3pt]
+            table[col sep=semicolon, x=inv_n, y=ratio, restrict expr to domain={\thisrow{nu1_kHz}}{100:100}]
+                {../data/processed/meander_processed.csv};
+            \addlegendentry{$\nu_1 = 100$~кГц}
+            \addplot[no marks, thick, domain=0:1.05] {x};
+            \addlegendentry{теория: $|a_n/a_1| = 1/n$}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Относительные амплитуды нечётных гармоник меандра}
+    \label{fig:meander}
+\end{figure}
+
+Относительные амплитуды первых гармоник согласуются с законом $1/n$
+(\cref{fig:meander}): при $n = 3$ и $5$ величина $n|a_n/a_1|$ равна
+$\nRatioThreeA$ и $\nRatioFiveA$. С ростом номера амплитуды спадают
+несколько быстрее, чем $1/n$: при $n = 15$ ($\nu = 750$~кГц)
+$n|a_n/a_1| = \nRatioMinA$. Для $\nu_1 = 50$ и $100$~кГц это отклонение
+одинаково как функция номера гармоники (а не частоты), поэтому оно,
+по-видимому, связано с формой импульсов генератора (конечная длительность
+фронтов, масштабируемая вместе с периодом), а не с частотной
+характеристикой входного тракта осциллографа.
+
+Кроме гармоник, в спектре есть линии, которых у меандра быть не должно
+(\cref{tab:alias}): при $\nu_1 = 50$~кГц --- на частотах $\approx
+212{,}\,312,\,\dots,\,712$~кГц, при $\nu_1 = 100$~кГц --- на
+$\approx 63,\,138,\,263,\,\dots$~кГц. Все они объясняются наложением
+(\cref{eq:alias}) нечётных гармоник, лежащих выше
+$\nu_{\text{дискр}}/2$. Экран спектроанализатора охватывает полосу
+$0\div\nu_{\text{дискр}}/2$, т.\,е. $\nu_{\text{дискр}}\approx
+2\cdot\screenEdge$~кГц; подбор номера гармоники $n$ и кратности $k$ для
+каждой линии и последующее усреднение дают
+\begin{equation}
+    \nu_{\text{дискр}} = \fsamp~\text{кГц},
+    \qquad
+    \nu_{\text{дискр}}/2 = \fnyq~\text{кГц}.
+\end{equation}
+Расчётные положения линий наложения совпадают с наблюдаемыми в пределах
+погрешности отсчёта ($0{,}75$~кГц), а их амплитуды $n|a_n/a_1|$ плавно
+продолжают зависимость из \cref{tab:meander}: это действительно гармоники
+с номерами $n = 9\div27$, «перенесённые» в видимую полосу. Одно и то же
+значение $\nu_{\text{дискр}}$ описывает оба спектра. Этот пример
+иллюстрирует требование $\nu<\nu_{\text{дискр}}/2$: для сигнала с
+медленно спадающим спектром часть линий на экране не соответствует
+реальным частотам сигнала.
+
+\begin{table}[!ht]
+    \centering
+    \small
+    \caption{Линии наложения в спектрах меандра: наблюдаемая частота
+             $\nu'$, номер гармоники-источника $n$, её частота $n\nu_1$,
+             кратность $k$ и расчётная частота
+             $|n\nu_1 - k\nu_{\text{дискр}}|$}
+    \label{tab:alias}
+    \csvreader[
+        separator = semicolon,
+        tabularray = {
+            colspec = {|c|c|c|c|c|c|c|c|},
+            hlines, vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {
+            $\nu_1$, кГц & $\nu'$, кГц & $n$ & $n\nu_1$, кГц & $k$
+            & $\nu'_{\text{расч}}$, кГц & $a$, мВ & $n a/a_1$ \\
+        }
+    ]%
+    {../data/processed/alias_processed.csv}%
+    {nu1_kHz=\cNuOne, nu_obs_kHz=\cObs, n=\cN, nu_n_kHz=\cNn, k=\cK,
+     nu_pred_kHz=\cPred, a_mV=\cA, n_ratio=\cNR}%
+    {$\cNuOne$ & $\pn{\cObs}$ & $\cN$ & $\pn{\cNn}$ & $\cK$ & $\pn{\cPred}$ & $\pn{\cA}$ & $\pn{\cNR}$}
+\end{table}
 
 \clearpage
 \subsection{А. Проверка соотношения $\Delta\nu\cdot\tau\simeq1$}
 При фиксированном периоде $T = 1$~мс длительность импульса менялась в
-диапазоне от $T/50$ до $T/5$; измерялась ширина спектра $\Delta\nu$ --- от
-$\nu=0$ до первого нуля огибающей (\cref{tab:width}).
+диапазоне от $T/50$ до $T/5$; измерялась ширина спектра $\Delta\nu$ ---
+от $\nu = 0$ до гармоники с нулевой амплитудой (\cref{tab:width}). Поскольку
+гармоники расположены через $\delta\nu = 1$~кГц, погрешность определения
+нуля огибающей принята равной $0{,}5$~кГц.
 
 \begin{table}[!ht]
     \centering
     \caption{Ширина спектра при различных длительностях импульса
              ($T = 1$~мс)}
     \label{tab:width}
-
     \csvreader[
+        separator = semicolon,
         tabularray = {
             colspec = {|c|c|c|c|},
-            hlines,
-            vlines,
+            hlines, vlines,
             row{1} = {font=\bfseries},
         },
         table head = {
-            \textbf{$\tau$, мкс}
-            &
-            \textbf{$1/\tau$, кГц}
-            &
-            \textbf{$\Delta\nu$, кГц}
-            &
-            \textbf{$\Delta\nu\cdot\tau$}
-            \\
+            $\tau$, мкс & $1/\tau$, кГц & $\Delta\nu$, кГц
+            & $\Delta\nu\cdot\tau$ \\
         }
     ]%
     {../data/processed/spectrum_width_processed.csv}%
-    {tau_us=\csvTau, inv_tau_kHz=\csvInvTau, Dnu_kHz=\csvDnu, Dnu_tau=\csvProd}%
-    {%
-        $\csvTau$ & $\csvInvTau$ & $\csvDnu$ & $\csvProd$
-    }
+    {tau_us=\cTau, inv_tau_kHz=\cIt, Dnu_kHz=\cD, Dnu_tau=\cP}%
+    {$\cTau$ & $\cIt$ & $\cD$ & $\cP$}
 \end{table}
 
 \begin{figure}[!ht]
@@ -522,74 +726,66 @@ $\nu=0$ до первого нуля огибающей (\cref{tab:width}).
             grid=both,
             minor tick num=1,
             legend pos=north west,
+            legend cell align=left,
         ]
-
-            \addplot[
-                only marks,
-                mark=*,
-            ]
-            table[
-                col sep=comma,
-                x=inv_tau_kHz,
-                y=Dnu_kHz,
-            ] {../data/processed/spectrum_width_processed.csv};
-            \addlegendentry{Экспериментальные данные}
-
-            \addplot[no marks, thick, domain=0:55] {0.9914*x + 0.048};
-            \addlegendentry{МНК: $\Delta\nu = 0{,}991/\tau + 0{,}05$~кГц}
-
+            \addplot[only marks, mark=*,
+                     error bars/.cd, y dir=both, y explicit]
+            table[col sep=semicolon, x=x, y=y, y error=ey]
+                {../data/processed/spectrum_width_processed.csv};
+            \addlegendentry{Эксперимент}
+            \addplot[no marks, thick, domain=0:55] {\kDnuNum*x};
+            \addlegendentry{МНК: $\Delta\nu = k/\tau$, $k = \kDnuVal$}
         \end{axis}
     \end{tikzpicture}
     \caption{Зависимость ширины спектра от обратной длительности импульса}
     \label{fig:width}
 \end{figure}
 
-Обработка методом наименьших квадратов даёт наклон
+Взвешенный МНК для прямой через начало координат даёт
 \begin{equation}
-    k_{\Delta\nu} = 0{,}991 \pm 0{,}003,
-    \qquad b = 0{,}05 \pm 0{,}09~\text{кГц},
+    k_{\Delta\nu} = \kDnu;
 \end{equation}
-свободный член в пределах погрешности равен нулю, а наклон отличается от
-теоретического значения $k = 1$ (\cref{eq:uncertainty_rect}) менее чем на
-1~\%. Соотношение неопределённостей $\Delta\nu\cdot\tau \simeq 1$
-выполняется: для всех точек произведение лежит в интервале
-$0{,}98\div1{,}03$.
+при аппроксимации $\Delta\nu = k/\tau + b$ получаем $k = \kDnuFree$,
+$b = \bDnu$~кГц, т.\,е. свободный член в пределах погрешности равен нулю.
+Наклон совпадает с теоретическим значением $k = 1$
+(\cref{eq:uncertainty_rect}), а произведение $\Delta\nu\cdot\tau$ для всех
+точек лежит в пределах $\prodMin\div\prodMax$; отклонения от единицы
+(при $\tau = 110\div170$~мкс) объясняются тем, что нуль огибающей
+$1/\tau$ попадает между гармониками, и его положение определяется лишь с
+точностью до шага $\delta\nu$. Соотношение неопределённостей
+$\Delta\nu\cdot\tau \simeq 1$ выполняется в диапазоне длительностей,
+различающихся в $10$ раз. Тот же результат даёт и спектр меандра
+(\cref{fig:meander_screens}): при $\tau = T/2$ первый нуль огибающей
+$1/\tau = 2\nu_1$ совпадает со второй гармоникой, и все чётные гармоники
+исчезают.
 
 \clearpage
 \subsection{А. Проверка соотношения $\delta\nu\cdot T = 1$}
-При фиксированной длительности импульса $\tau = 100$~мкс частота повторения
-менялась от $5$ до $0{,}1$~кГц ($T$ от $2\tau$ до $100\tau$); измерялось
-расстояние между соседними гармониками (\cref{tab:spacing}).
+При фиксированной длительности импульса $\tau = 100$~мкс период повторения
+менялся от $2\tau$ до $50\tau$; измерялось расстояние между соседними
+гармониками (\cref{tab:spacing}).
 
 \begin{table}[!ht]
     \centering
     \caption{Расстояние между соседними гармониками при различных периодах
              повторения ($\tau = 100$~мкс)}
     \label{tab:spacing}
-
     \csvreader[
+        separator = semicolon,
         tabularray = {
-            colspec = {|c|c|c|c|},
-            hlines,
-            vlines,
+            colspec = {|c|c|c|c|c|c|},
+            hlines, vlines,
             row{1} = {font=\bfseries},
         },
         table head = {
-            \textbf{$T$, мс}
-            &
-            \textbf{$1/T$, кГц}
-            &
-            \textbf{$\delta\nu$, кГц}
-            &
-            \textbf{$\delta\nu\cdot T$}
-            \\
+            $T$, мс & $T/\tau$ & $1/T$, кГц & $\delta\nu$, кГц
+            & $\delta\nu\cdot T$ & примечание \\
         }
     ]%
     {../data/processed/harmonics_spacing_processed.csv}%
-    {T_ms=\csvT, inv_T_kHz=\csvInvT, dnu_kHz=\csvdnu, dnu_T=\csvdnuT}%
-    {%
-        $\csvT$ & $\csvInvT$ & $\csvdnu$ & $\csvdnuT$
-    }
+    {T_ms=\cT, T_tau=\cTt, inv_T_kHz=\cIT, dnu_kHz=\cD, dnu_T=\cP,
+     note=\cNote}%
+    {$\cT$ & $\cTt$ & $\cIT$ & $\cD$ & $\cP$ & \cNote}
 \end{table}
 
 \begin{figure}[!ht]
@@ -600,142 +796,50 @@ $0{,}98\div1{,}03$.
             height=0.5\textwidth,
             xlabel={$1/T$, кГц},
             ylabel={$\delta\nu$, кГц},
-            xmin=0, xmax=5.5, ymin=0, ymax=5.5,
+            xmin=0, xmax=1.1, ymin=0, ymax=1.1,
             grid=both,
             minor tick num=1,
             legend pos=north west,
+            legend cell align=left,
         ]
-
-            \addplot[
-                only marks,
-                mark=*,
-            ]
-            table[
-                col sep=comma,
-                x=inv_T_kHz,
-                y=dnu_kHz,
-            ] {../data/processed/harmonics_spacing_processed.csv};
-            \addlegendentry{Экспериментальные данные}
-
-            \addplot[no marks, thick, domain=0:5.5] {0.9957*x + 0.0214};
-            \addlegendentry{МНК: $\delta\nu = 0{,}996/T + 0{,}02$~кГц}
-
+            \addplot[only marks, mark=*]
+            table[col sep=semicolon, x=x, y=y,
+                  restrict expr to domain={\thisrow{use}}{1:1}]
+                {../data/processed/harmonics_spacing_processed.csv};
+            \addlegendentry{Эксперимент}
+            \addplot[no marks, thick, domain=0:1.1] {\kdnuNum*x};
+            \addlegendentry{МНК: $\delta\nu = k/T$, $k = \kdnuVal$}
         \end{axis}
     \end{tikzpicture}
     \caption{Зависимость расстояния между гармониками от обратного периода
-             повторения}
+             повторения (без точки $T = 2\tau$, см. текст)}
     \label{fig:spacing}
 \end{figure}
 
-Наклон прямой:
+Точка $T = 2\tau$ выпадает: измеренное расстояние вдвое больше $1/T$. Это
+не ошибка измерения: при $T = 2\tau$ сигнал является меандром, все чётные
+гармоники обращаются в ноль (\cref{eq:meander}), и соседние
+\emph{видимые} линии отстоят друг от друга на $2/T = 10$~кГц. Поэтому эта
+точка в аппроксимацию не включалась. По остальным шести точкам
 \begin{equation}
-    k_{\delta\nu} = 0{,}996 \pm 0{,}015,
-    \qquad b = 0{,}02 \pm 0{,}03~\text{кГц},
+    k_{\delta\nu} = \kdnu,
 \end{equation}
-что в пределах погрешности совпадает с теоретическим значением $k = 1$.
-Выделяется точка $T = 10$~мс ($\delta\nu\cdot T \approx 2$): при
-$\delta\nu = 0{,}1$~кГц расстояние между гармониками сравнимо с
-разрешением спектроанализатора по частоте, поэтому соседние линии
-разрешаются плохо.
+а аппроксимация $\delta\nu = k/T + b$ даёт $k = \kdnuFree$,
+$b = \bdnu$~кГц. Наклон совпадает с теоретическим значением $k = 1$,
+произведение $\delta\nu\cdot T$ равно единице с точностью $0{,}5$~\%.
+Соотношение $\delta\nu = 1/T$ --- точное и от формы сигнала не зависит
+(далее оно подтверждается и для цугов).
 
 \clearpage
 \subsection{Б. Спектр последовательности цугов}
 Генератор настроен на подачу цугов синусоиды с несущей $\nu_0 = 50$~кГц,
 частотой повторения $\nu_{\text{повт}} = 1$~кГц ($T = 1$~мс) и числом
 периодов в цуге $N = 5$ (длительность цуга $\tau = N/\nu_0 = 100$~мкс).
-Спектры цугов при различных параметрах показаны на \cref{fig:burst_spectra}.
-
-Сначала менялось число периодов $N$ при фиксированных $\nu_0$ и
-$\nu_{\text{повт}}$ (\cref{tab:bursts_N}): спектр остаётся симметричным
-относительно одной и той же частоты $\nu_0$, но «сжимается» к ней при
-увеличении $N$, а расстояние между гармониками $\delta\nu = 1/T$ не
-меняется.
-
-\begin{table}[!ht]
-    \centering
-    \caption{Зависимость ширины спектра цугов от числа периодов $N$
-             ($\nu_0 = 50$~кГц, $T = 1$~мс)}
-    \label{tab:bursts_N}
-
-    \csvreader[
-        tabularray = {
-            colspec = {|c|c|c|c|c|c|},
-            hlines,
-            vlines,
-            row{1} = {font=\bfseries},
-        },
-        table head = {
-            \textbf{$N$}
-            &
-            \textbf{$\tau$, мкс}
-            &
-            \textbf{$\delta\nu$, кГц}
-            &
-            \textbf{$\Delta\nu$, кГц}
-            &
-            \textbf{$1/\tau$, кГц}
-            &
-            \textbf{$\Delta\nu\cdot\tau$}
-            \\
-        }
-    ]%
-    {../data/processed/bursts_N_processed.csv}%
-    {N=\csvNb, tau_us=\csvTauB, dnu_kHz=\csvdnuB, Dnu_kHz=\csvDnuB,
-     Dnu_theor_kHz=\csvDnuBth, Dnu_tau=\csvProdB}%
-    {%
-        $\csvNb$ & $\csvTauB$ & $\csvdnuB$ & $\csvDnuB$ & $\csvDnuBth$
-        & $\csvProdB$
-    }
-\end{table}
-
-Затем менялась частота несущей $\nu_0$ при фиксированных $N = 5$ и
-$\nu_{\text{повт}} = 1$~кГц (\cref{tab:bursts_nu0}). Поскольку
-$\tau = N/\nu_0$, ширина спектра растёт пропорционально $\nu_0$, а его центр
-смещается вслед за частотой несущей.
-
-\begin{table}[!ht]
-    \centering
-    \caption{Зависимость ширины спектра цугов от несущей частоты $\nu_0$
-             ($N = 5$, $T = 1$~мс)}
-    \label{tab:bursts_nu0}
-
-    \csvreader[
-        tabularray = {
-            colspec = {|c|c|c|c|c|c|},
-            hlines,
-            vlines,
-            row{1} = {font=\bfseries},
-        },
-        table head = {
-            \textbf{$\nu_0$, кГц}
-            &
-            \textbf{$\tau$, мкс}
-            &
-            \textbf{$\delta\nu$, кГц}
-            &
-            \textbf{$\Delta\nu$, кГц}
-            &
-            \textbf{$1/\tau$, кГц}
-            &
-            \textbf{$\Delta\nu\cdot\tau$}
-            \\
-        }
-    ]%
-    {../data/processed/bursts_nu0_processed.csv}%
-    {nu0_kHz=\csvNuZero, tau_us=\csvTauB, dnu_kHz=\csvdnuB, Dnu_kHz=\csvDnuB,
-     Dnu_theor_kHz=\csvDnuBth, Dnu_tau=\csvProdB}%
-    {%
-        $\csvNuZero$ & $\csvTauB$ & $\csvdnuB$ & $\csvDnuB$ & $\csvDnuBth$
-        & $\csvProdB$
-    }
-\end{table}
-
-Во всех измерениях $\delta\nu = 1$~кГц $= 1/T$, а произведение
-$\Delta\nu\cdot\tau$ в среднем равно $0{,}99 \pm 0{,}01$, что подтверждает
-соотношение неопределённостей \cref{eq:burst_width}. Центр спектра
-совпадает с частотой несущей, что подтверждает теорему смещения
-\cref{eq:shift}: спектр цугов --- это спектр прямоугольных импульсов,
-перенесённый из окрестности нуля в окрестность $\nu_0$.
+Затем поочерёдно менялись число периодов $N$, частота несущей $\nu_0$ и
+период повторения $T$. В каждом случае измерялись расстояние между
+гармониками $\delta\nu$ и ширина спектра $\Delta\nu$ --- от центра спектра
+до первого нуля огибающей (\cref{tab:bursts}). Спектрограммы цугов при
+различных параметрах приведены на \cref{fig:burst_spectra}.
 
 \begin{figure}[!ht]
     \centering
@@ -761,26 +865,117 @@ $\Delta\nu\cdot\tau$ в среднем равно $0{,}99 \pm 0{,}01$, что п
     \begin{subfigure}{0.48\textwidth}
         \centering
         \labimage{spectrum_burst_nu100_N10.png}{1.0}
-        \caption{$T = 1$~мс, $\nu_0 = 100$~кГц, $N = 10$}
+        \caption{$T = 1$~мс, $\nu_0 = 100$~кГц, $N = 5$}
     \end{subfigure}
     \caption{Спектры последовательности цугов при различных параметрах
-             (диапазон частот $25\div85$~кГц). При $\nu_0 = 100$~кГц центр
-             спектра лежит за пределами показанного диапазона}
+             (диапазон частот $23\div83$~кГц). При $\nu_0 = 100$~кГц центр
+             спектра лежит за пределами показанного диапазона, видны лишь
+             боковые лепестки огибающей}
     \label{fig:burst_spectra}
 \end{figure}
 
-Сравнение (а) и (б) на \cref{fig:burst_spectra} показывает, что при
-увеличении периода повторения вдвое гармоники располагаются вдвое чаще, а
-огибающая спектра не меняется; сравнение (а) и (в) --- что при увеличении
-$N$ вдвое центральный лепесток сужается вдвое.
+\begin{table}[!ht]
+    \centering
+    \caption{Параметры спектров цугов; в первом столбце указан параметр,
+             который менялся в серии. Погрешность $\Delta\nu$ ---
+             половина шага гармоник}
+    \label{tab:bursts}
+    \csvreader[
+        separator = semicolon,
+        tabularray = {
+            colspec = {|c|c|c|c|c|c|c|c|c|},
+            hlines, vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {
+            серия & $\nu_0$, кГц & $T$, мс & $N$ & $\tau$, мкс
+            & $\delta\nu$, кГц & $\delta\nu\cdot T$ & $\Delta\nu$, кГц
+            & $\Delta\nu\cdot\tau$ \\
+        }
+    ]%
+    {../data/processed/bursts_processed.csv}%
+    {series=\cS, nu0_kHz=\cNz, T_ms=\cT, N=\cN, tau_us=\cTau, dnu_kHz=\cd,
+     dnu_T=\cdT, Dnu_kHz=\cD, Dnu_tau=\cP}%
+    {\cS & $\cNz$ & $\cT$ & $\cN$ & $\cTau$ & $\cd$ & $\cdT$ & $\cD$ & $\cP$}
+\end{table}
+
+\begin{figure}[!ht]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            width=0.8\textwidth,
+            height=0.5\textwidth,
+            xlabel={$1/\tau = \nu_0/N$, кГц},
+            ylabel={$\Delta\nu$, кГц},
+            xmin=0, xmax=11, ymin=0, ymax=11,
+            grid=both,
+            minor tick num=1,
+            legend pos=north west,
+            legend cell align=left,
+        ]
+            \addplot[only marks, mark=*,
+                     error bars/.cd, y dir=both, y explicit]
+            table[col sep=semicolon, x=x, y=y, y error=ey]
+                {../data/processed/bursts_width_points.csv};
+            \addlegendentry{Эксперимент}
+            \addplot[no marks, thick, domain=0:11] {\kBurstNum*x};
+            \addlegendentry{МНК: $\Delta\nu = k/\tau$, $k = \kBurstVal$}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Ширина спектра цугов в зависимости от обратной длительности
+             цуга $1/\tau = \nu_0/N$}
+    \label{fig:burst_width}
+\end{figure}
+
+Результаты серий:
+\begin{itemize}
+    \item \emph{изменение $N$} ($\nu_0 = 50$~кГц, $T = 1$~мс): спектр
+          остаётся симметричным относительно одной и той же частоты
+          $\nu_0$, но «сжимается» к ней при увеличении $N$:
+          $\Delta\nu = 10;\ 5;\ 3;\ 2{,}5$~кГц при $N = 5;\ 10;\ 15;\ 20$,
+          т.\,е. $\Delta\nu = \nu_0/N$ (при $N = 15$ значение
+          $\nu_0/N = 3{,}3$~кГц лежит между гармониками, и нуль огибающей
+          определяется с точностью до шага $\delta\nu$). Шаг гармоник $\delta\nu = 1$~кГц не
+          меняется. На \cref{fig:burst_spectra}\,(а, в) видно, что при
+          удвоении $N$ центральный лепесток вдвое сужается, а амплитуда
+          центральных линий вдвое растёт;
+    \item \emph{изменение $\nu_0$} ($N = 5$, $T = 1$~мс): при
+          $\nu_0 = 30;\ 40;\ 50$~кГц ширина спектра $\Delta\nu = 6;\ 8;\
+          10$~кГц растёт пропорционально $\nu_0$ (поскольку
+          $\tau = N/\nu_0$ уменьшается), а центр спектра смещается вслед за
+          частотой несущей. На \cref{fig:burst_spectra}\,(г) при
+          $\nu_0 = 100$~кГц нули огибающей видны на $\approx40$, $60$ и
+          $80$~кГц, т.\,е. через $\nu_0/N = 20$~кГц;
+    \item \emph{изменение $T$} ($\nu_0 = 50$~кГц, $N = 5$): при
+          $T = 1;\ 2;\ 4$~мс расстояние между гармониками
+          $\delta\nu = 1;\ 0{,}5;\ 0{,}25$~кГц $= 1/T$, а огибающая
+          ($\Delta\nu = 10$~кГц) не меняется
+          (\cref{fig:burst_spectra}\,(а, б)); при увеличении $T$ амплитуды
+          гармоник уменьшаются пропорционально $\tau/T$.
+\end{itemize}
+
+Аппроксимация зависимости $\Delta\nu(1/\tau)$ (\cref{fig:burst_width})
+прямой через начало координат даёт
+\begin{equation}
+    k = \kBurst,
+\end{equation}
+во всех измерениях $\Delta\nu\cdot\tau = 1$ и $\delta\nu\cdot T = 1$ в
+пределах точности отсчёта, что подтверждает соотношения
+неопределённостей \cref{eq:burst_width} и $\delta\nu = 1/T$. То, что центр
+спектра совпадает с частотой несущей, а форма огибающей и её ширина
+определяются только длительностью цуга, подтверждает теорему смещения
+\cref{eq:shift}: спектр цугов --- это спектр последовательности
+прямоугольных импульсов длительности $\tau = N/\nu_0$, перенесённый из
+окрестности нуля в окрестность $\nu_0$.
 
 \clearpage
 \subsection{Г. Спектр амплитудно-модулированного сигнала}
-Генератор настроен на АМ-сигнал с несущей $\nu_0 = 50$~кГц, частотой
-модуляции $\nu_{\text{мод}} = 2$~кГц и глубиной модуляции $m = 0{,}5$.
-В спектре (\cref{fig:am_spectrum}) наблюдаются три линии: центральная на
-частоте $\nu_0$ и две боковые одинаковой амплитуды на частотах
-$\nu_0\pm\nu_{\text{мод}}$.
+Генератор настроен на АМ-сигнал с несущей $\nu_0 = 50$~кГц и частотой
+модуляции $\nu_{\text{мод}} = 2$~кГц. В спектре (\cref{fig:am_spectrum})
+наблюдаются три линии: центральная на частоте $\nu_0$ и две боковые
+одинаковой амплитуды на частотах $\nu_0\pm\nu_{\text{мод}}$
+(\cref{tab:am}). Обратите внимание: шкала амплитуд на
+\cref{fig:am_spectrum} начинается не с нуля, а с $19{,}17$~мВ.
 
 \begin{figure}[!ht]
     \centering
@@ -790,77 +985,125 @@ $\nu_0\pm\nu_{\text{мод}}$.
     \label{fig:am_spectrum}
 \end{figure}
 
-По осциллограмме сигнала измерены $A_{\max} = 3{,}057$~мВ и
-$A_{\min} = 1{,}027$~мВ, откуда по \cref{eq:am_ratio}
-\begin{equation}
-    m = \frac{A_{\max}-A_{\min}}{A_{\max}+A_{\min}}
-    = \frac{2{,}030}{4{,}084} = 0{,}497,
-\end{equation}
-что совпадает с установленным на генераторе значением $m = 0{,}5$ с
-точностью $0{,}6$~\%.
-
-Спектры АМ-сигнала в широком диапазоне частот при различных $\nu_0$ и
-$\nu_{\text{мод}}$ приведены на \cref{fig:am_wide}. В таком масштабе боковые
-линии $\nu_0\pm\nu_{\text{мод}}$ с основной не разрешаются; при изменении
-$\nu_0$ смещается вся картина спектра.
-
-\begin{figure}[!ht]
-    \centering
-    \begin{subfigure}{0.32\textwidth}
-        \centering
-        \labimage{spectrum_am_wide_1.png}{1.0}
-        \caption{$\nu_0 = 50$, $\nu_{\text{мод}} = 2$~кГц}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}{0.32\textwidth}
-        \centering
-        \labimage{spectrum_am_wide_2.png}{1.0}
-        \caption{$\nu_0 = 50$, $\nu_{\text{мод}} = 4$~кГц}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}{0.32\textwidth}
-        \centering
-        \labimage{spectrum_am_wide_3.png}{1.0}
-        \caption{$\nu_0 = 100$, $\nu_{\text{мод}} = 2$~кГц}
-    \end{subfigure}
-    \caption{Спектры АМ-сигнала в диапазоне $0\div800$~кГц}
-    \label{fig:am_wide}
-\end{figure}
-
-Изменяя глубину модуляции от 10 до 100~\%, измерили амплитуду боковой
-линии при неизменной амплитуде основной $a_{\text{осн}} = 1318$~мВ
-(\cref{tab:am}).
-
 \begin{table}[!ht]
     \centering
-    \caption{Отношение амплитуд боковой и основной спектральных линий
-             АМ-сигнала ($a_{\text{осн}} = 1318$~мВ)}
+    \caption{Спектральные линии АМ-сигнала}
     \label{tab:am}
-
     \csvreader[
+        separator = semicolon,
         tabularray = {
             colspec = {|c|c|c|c|},
-            hlines,
-            vlines,
+            hlines, vlines,
             row{1} = {font=\bfseries},
         },
         table head = {
-            \textbf{$m$, \%}
-            &
-            \textbf{$a_{\text{бок}}$, мВ}
-            &
-            \textbf{$a_{\text{бок}}/a_{\text{осн}}$}
-            &
-            \textbf{$m/2$}
-            \\
+            линия & $\nu$, кГц & $a$, мВ & $a/a_{\text{осн}}$ \\
         }
     ]%
     {../data/processed/am_processed.csv}%
-    {m_set_percent=\csvMset, a_side_mV=\csvAside, ratio=\csvRat,
-     ratio_theor=\csvRatTh}%
-    {%
-        $\csvMset$ & $\csvAside$ & $\csvRat$ & $\csvRatTh$
-    }
+    {line=\cL, nu_kHz=\cNu, a_mV=\cA, ratio=\cR}%
+    {\cL & $\cNu$ & $\cA$ & $\cR$}
+\end{table}
+
+По положению линий $\nu_0 = \amNuzero$~кГц,
+$\nu_{\text{мод}} = \amNumod$~кГц, что совпадает с установленными
+значениями. Отношение амплитуд
+\begin{equation}
+    \frac{a_{\text{бок}}}{a_{\text{осн}}} = \amRatio
+    \quad\Rightarrow\quad
+    m = \frac{2a_{\text{бок}}}{a_{\text{осн}}} = \amM,
+\end{equation}
+т.\,е. спектр снят при глубине модуляции $m = 100$~\%. Боковые линии
+симметричны: их амплитуды совпадают в пределах цены деления
+($1{,}5$~мВ). При $m = 1$ соотношение \cref{eq:am_ratio} предсказывает
+$a_{\text{бок}}/a_{\text{осн}} = 0{,}5$; измеренное значение отличается
+от него на $0{,}6$~\%, т.\,е. на $1{,}8$ погрешности, что соответствует
+точности установки $m$ на генераторе.
+
+\clearpage
+\subsection{Е. Фильтрация сигнала $RC$-цепочкой}
+Была собрана схема фильтра низких частот (\cref{fig:rc_scheme}) и на её вход
+подана последовательность прямоугольных импульсов. Получены осциллограмма
+сигнала на выходе цепочки и его спектр (\cref{fig:filter}). Прямое
+измерение коэффициентов фильтрации $K_n$ (со спектром входного сигнала,
+снятым отдельно) провести не удалось; постоянная времени определена по
+форме выходного сигнала.
+
+\begin{figure}[!ht]
+    \centering
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \labimage{filter_signal.png}{1.0}
+        \caption{осциллограмма (вход «Перем.», мкс)}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \labimage{filter_spectrum.png}{1.0}
+        \caption{спектр (МГц)}
+    \end{subfigure}
+    \caption{Сигнал на выходе $RC$-цепочки и его спектр}
+    \label{fig:filter}
+\end{figure}
+
+\paragraph{Осциллограмма.}
+Сигнал на конденсаторе имеет вид чередующихся коротких участков нарастания
+и длинных участков почти линейного спада: за время импульса конденсатор
+заряжается, в паузе --- разряжается. По положению вершин период
+$T = \filtT$~мкс. Каждый участок спада аппроксимирован экспонентой
+\cref{eq:rc_transient} со свободными $U_\infty$, $U(0)$ и $\tau_{RC}$;
+среднее по трём периодам
+\begin{equation}
+    \tau_{RC} = \filtRC~\text{мкс},
+    \qquad
+    \nu_{RC} = \frac{1}{2\pi\tau_{RC}} = \filtNuRC~\text{кГц}.
+\end{equation}
+При известном $\tau_{RC}$ аппроксимация участков нарастания даёт
+высоту входных импульсов $U_0 = \filtUzero$~В (генератор выдаёт импульсы
+размахом $4$~В) и их длительность $\tau = \filtTau$~мкс $\approx T/20$ ---
+именно такие параметры рекомендует методика. Поскольку
+$\tau_{RC}\approx 1{,}2\,T \gg \tau$, выходной сигнал имеет малую (около
+$4$~\% от $U_0$) амплитуду, а спады почти линейны.
+
+\paragraph{Спектр.}
+Спектр выходного сигнала дискретен: линии стоят на частотах, кратных
+$\nu_1 = \filtNuOne$~кГц ($T = \filtTspec$~мкс, в согласии с
+осциллограммой). Первая гармоника лежит далеко за частотой среза фильтра:
+$2\pi\nu_1\tau_{RC} = \filtWnu \gg 1$, т.\,е. цепочка работает в режиме
+интегрирования. Поэтому, хотя у входных импульсов с $\tau\approx T/20$
+амплитуды первых десяти гармоник почти одинаковы, на выходе они убывают
+примерно как $1/n$.
+
+Для сравнения с \cref{eq:rc_filter} относительные коэффициенты
+фильтрации вычислены как
+\begin{equation}
+    \frac{K_n}{K_1} = \frac{a_n/a_1}{\bigl(a_n/a_1\bigr)_{\text{вх}}},
+\end{equation}
+где $(a_n/a_1)_{\text{вх}}$ рассчитано по \cref{eq:rect_ratio} для
+найденного $\tau/T = \filtQ$ (\cref{tab:filter}, \cref{fig:filter_K}).
+
+\begin{table}[!ht]
+    \centering
+    \caption{Гармоники сигнала на выходе $RC$-цепочки и относительный
+             коэффициент фильтрации ($\tau_{RC} = \filtRC$~мкс)}
+    \label{tab:filter}
+    \csvreader[
+        separator = semicolon,
+        tabularray = {
+            colspec = {|c|c|c|c|c|c|c|},
+            hlines, vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {
+            $n$ & $\nu_n$, кГц & $a_n$, мВ & $(a_n/a_1)_{\text{вх}}$
+            & $(K_n/K_1)_{\text{эксп}}$ & $(K_n/K_1)_{\text{теор}}$
+            & $\varepsilon$, \% \\
+        }
+    ]%
+    {../data/processed/filter_processed.csv}%
+    {n=\cN, nu_kHz=\cNu, a_mV=\cA, ain_rel=\cAin, K_exp=\cKe,
+     K_theor=\cKt, dev_percent=\cDev}%
+    {$\cN$ & $\pn{\cNu}$ & $\pn{\cA}$ & $\pn{\cAin}$ & $\pn{\cKe}$ & $\pn{\cKt}$ & \cDev}
 \end{table}
 
 \begin{figure}[!ht]
@@ -869,108 +1112,85 @@ $\nu_0$ смещается вся картина спектра.
         \begin{axis}[
             width=0.8\textwidth,
             height=0.5\textwidth,
-            xlabel={$m$, отн. ед.},
-            ylabel={$a_{\text{бок}}/a_{\text{осн}}$, отн. ед.},
-            xmin=0, xmax=1.05, ymin=0, ymax=0.55,
+            xlabel={$\nu$, кГц},
+            ylabel={$K_n/K_1$},
+            xmin=0, xmax=3600, ymin=0, ymax=1.1,
             grid=both,
             minor tick num=1,
-            legend pos=north west,
+            legend pos=north east,
+            legend cell align=left,
+            scaled x ticks=false,
+            xticklabel style={/pgf/number format/1000 sep={}},
         ]
-
-            \addplot[
-                only marks,
-                mark=*,
-            ]
-            table[
-                col sep=comma,
-                x=m,
-                y=ratio,
-            ] {../data/processed/am_processed.csv};
-            \addlegendentry{Экспериментальные данные}
-
-            \addplot[no marks, thick, domain=0:1.05] {0.5132*x + 0.0047};
-            \addlegendentry{МНК: $a_{\text{бок}}/a_{\text{осн}} = 0{,}513\,m + 0{,}005$}
-
-            \addplot[no marks, thick, dashed, domain=0:1.05] {0.5*x};
-            \addlegendentry{теория: $a_{\text{бок}}/a_{\text{осн}} = m/2$}
-
+            \addplot[only marks, mark=*]
+            table[col sep=semicolon, x=nu_kHz, y=K_exp]
+                {../data/processed/filter_processed.csv};
+            \addlegendentry{Эксперимент}
+            \addplot[no marks, thick, domain=330:3600, samples=200]
+                {sqrt(1+(2*pi*\filtNuOneNum*\filtRCNum/1000)^2)
+                 /sqrt(1+(2*pi*x*\filtRCNum/1000)^2)};
+            \addlegendentry{\cref{eq:rc_filter}, $\tau_{RC} = \filtRCVal$~мкс}
         \end{axis}
     \end{tikzpicture}
-    \caption{Зависимость отношения амплитуд боковой и основной спектральных
-             линий от глубины модуляции}
-    \label{fig:am}
+    \caption{Относительный коэффициент фильтрации $RC$-цепочки}
+    \label{fig:filter_K}
 \end{figure}
 
-Наклон экспериментальной прямой
-\begin{equation}
-    k_{\text{АМ}} = 0{,}513 \pm 0{,}009,
-    \qquad b = 0{,}005 \pm 0{,}005,
-\end{equation}
-при теоретическом $0{,}5$ (\cref{eq:am_ratio}); расхождение $2{,}6$~\%,
-что составляет около $1{,}4\,\sigma$. Свободный член в пределах погрешности
-равен нулю. Таким образом, соотношение $a_{\text{бок}}/a_{\text{осн}} = m/2$
-подтверждается.
-
-\clearpage
-\subsection{Е. Фильтрация сигнала $RC$-цепочкой}
-Была собрана схема фильтра низких частот (\cref{fig:rc_scheme}) и на её вход
-подана последовательность прямоугольных импульсов. Количественные измерения
-коэффициента фильтрации провести не удалось: время, отведённое на
-выполнение работы, было исчерпано. Получены осциллограмма сигнала на
-выходе цепочки и его спектр (\cref{fig:filter}).
-
-\begin{figure}[!ht]
-    \centering
-    \begin{subfigure}{0.48\textwidth}
-        \centering
-        \labimage{filter_signal.png}{1.0}
-        \caption{осциллограмма}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}{0.48\textwidth}
-        \centering
-        \labimage{filter_spectrum.png}{1.0}
-        \caption{спектр}
-    \end{subfigure}
-    \caption{Сигнал на выходе $RC$-цепочки и его спектр}
-    \label{fig:filter}
-\end{figure}
-
-Сигнал на конденсаторе имеет вид чередующихся участков быстрого нарастания
-и экспоненциального спада напряжения: резкие фронты прямоугольных импульсов
-сглажены, что соответствует подавлению высокочастотных гармоник
-согласно \cref{eq:rc_filter}. Спектр выходного сигнала остаётся
-дискретным (линии расположены с шагом $1/T$), амплитуды гармоник убывают с
-ростом частоты. Качественно это подтверждает, что $RC$-цепочка работает как
-фильтр низких частот.
+Экспериментальные точки в целом следуют теоретической зависимости
+$K\propto1/\nu$: для $n = 2,\,3,\,6,\,9$ отклонение не превышает
+$6$~\%, однако для отдельных гармоник ($n = 4,\,5,\,7,\,8,\,10$) оно
+достигает $\filtDevMax$~\% (медианное отклонение $\filtDevMedian$~\%).
+Причины --- спектр входного сигнала не измерялся, а рассчитывался для
+идеальных импульсов (форма реальных коротких импульсов может заметно отличаться от
+прямоугольной), и погрешность БПФ при коротком окне для линий с амплитудой в
+несколько мВ. Кроме того, при $2\pi\nu\tau_{RC}\gg1$ отношение
+$K_n/K_1\approx1/n$ практически не зависит от $\tau_{RC}$, поэтому
+определять $\tau_{RC}$ по этим данным нельзя; её значение надёжно
+определено по осциллограмме. Качественно спектр подтверждает, что
+$RC$-цепочка работает как фильтр низких частот, подавляющий гармоники
+пропорционально их частоте.
 
 \section{Обсуждение результатов}
 \begin{itemize}
-    \item Измеренные частоты гармоник прямоугольного сигнала совпадают с
-          теоретическими $\nu_n = n/T$ с точностью $1{,}6$~\%.
-          Относительные амплитуды $|a_n/a_1|$ систематически занижены,
-          причём отклонение растёт с номером гармоники (до $14$~\% при
-          $n\leqslant 15$). Вероятные причины --- конечное время нарастания
-          фронтов реального импульса и конечная ширина «окна» БПФ; для
-          гармоник вблизи нуля огибающей велика относительная погрешность
-          измерения малой амплитуды.
+    \item Частоты гармоник последовательности прямоугольных импульсов
+          совпадают с теоретическими $\nu_n = n/T$. Относительные амплитуды
+          первых восьми гармоник совпадают с \cref{eq:rect_ratio} с
+          точностью лучше $1$~\%; небольшое систематическое занижение
+          (в среднем $\hDevMean$~\%) соответствует эффективной длительности
+          импульса $\tau = \tauEnv$~мкс вместо установленных $50$~мкс.
     \item Соотношения неопределённостей подтверждены: наклоны прямых
-          $\Delta\nu(1/\tau)$ и $\delta\nu(1/T)$ равны $0{,}991\pm0{,}003$ и
-          $0{,}996\pm0{,}015$ при теоретическом значении 1. Точка с
-          наименьшей частотой повторения ($0{,}1$~кГц) в зависимости
-          $\delta\nu(1/T)$ выпадает из-за ограниченного разрешения
-          спектроанализатора по частоте.
-    \item Теорема смещения подтверждена: спектр цугов повторяет спектр
-          прямоугольных импульсов, перенесённый к частоте несущей, при этом
-          $\delta\nu = 1/T$ сохраняется, а $\Delta\nu\cdot\tau = 0{,}99\pm0{,}01$.
-    \item Зависимость $a_{\text{бок}}/a_{\text{осн}}(m)$ линейна с наклоном
-          $0{,}513\pm0{,}009$ при теоретическом $0{,}5$. Глубина модуляции,
-          вычисленная по огибающей сигнала ($m = 0{,}497$), совпадает с
-          заданной на генераторе.
+          $\Delta\nu(1/\tau)$ и $\delta\nu(1/T)$ равны $\kDnu$ и $\kdnu$
+          при теоретическом значении 1. Погрешность $\Delta\nu$ определяется
+          дискретностью спектра: нуль огибающей можно найти лишь с
+          точностью до шага гармоник. Точка $T = 2\tau$ в зависимости
+          $\delta\nu(1/T)$ выпадает закономерно: у меандра нет чётных
+          гармоник, и видимые линии отстоят на $2/T$.
+    \item В спектре меандра в полосе $0\div780$~кГц наряду с нечётными
+          гармониками ($|a_n/a_1|\approx1/n$) наблюдались линии наложения
+          гармоник с $n = 9\div27$; по ним определена частота дискретизации
+          спектроанализатора $\nu_{\text{дискр}} = \fsamp$~кГц. Это наглядно
+          показывает, почему спектр можно считать достоверным лишь при
+          $\nu<\nu_{\text{дискр}}/2$.
+    \item Теорема смещения подтверждена: спектр цугов симметричен
+          относительно частоты несущей и повторяет спектр прямоугольных
+          импульсов длительности $\tau = N/\nu_0$; $\Delta\nu = \nu_0/N$
+          ($k = \kBurst$) и $\delta\nu = 1/T$ во всех сериях.
+    \item Для АМ-сигнала положения линий $\nu_0$ и
+          $\nu_0\pm\nu_{\text{мод}}$ совпадают с заданными, а
+          $a_{\text{бок}}/a_{\text{осн}} = \amRatio$ соответствует
+          $m = \amM$. Сохранён спектр только при одной глубине модуляции,
+          поэтому зависимость $a_{\text{бок}}/a_{\text{осн}}(m)$ не
+          построена.
+    \item Для $RC$-цепочки по осциллограмме определена
+          $\tau_{RC} = \filtRC$~мкс; спектр выходного сигнала согласуется
+          с режимом интегрирования ($K\propto1/\nu$), но из-за отсутствия
+          измеренного спектра входного сигнала расхождение для отдельных
+          гармоник достигает $\filtDevMax$~\%.
     \item Ограничения метода: спектр вычисляется только по видимой на экране
-          части сигнала, что вносит «краевые эффекты» и ограничивает
-          разрешение по частоте; дискретизация ограничивает доступный
-          диапазон частот условием $\nu < \nu_{\text{дискр}}/2$.
+          части сигнала, что вносит «краевые эффекты» (слабые побочные пики
+          на спектрограммах части А) и ограничивает разрешение по частоте;
+          дискретизация ограничивает доступный диапазон частот условием
+          $\nu < \nu_{\text{дискр}}/2$.
 \end{itemize}
 
 \section{Заключение}
@@ -981,18 +1201,23 @@ $\nu_0$ смещается вся картина спектра.
           спектра увеличивается, при увеличении длительности импульса
           ширина спектра уменьшается;
     \item частоты гармоник последовательности прямоугольных импульсов
-          совпадают с $n/T$ с точностью $1{,}6$~\%, относительные амплитуды
-          согласуются с \cref{eq:rect_ratio} с точностью до $14$~\%;
-    \item проверены соотношения неопределённостей:
-          $\Delta\nu\cdot\tau = 0{,}991 \pm 0{,}003$ и
-          $\delta\nu\cdot T = 0{,}996 \pm 0{,}015$ при теоретическом
-          значении 1;
+          совпадают с $n/T$, относительные амплитуды --- с
+          \cref{eq:rect_ratio} с точностью лучше $1$~\%; при $\tau = T/2$
+          чётные гармоники исчезают, нечётные убывают как $1/n$;
+    \item проверены соотношения неопределённостей $\Delta\nu = k/\tau$ и
+          $\delta\nu = k/T$: получены наклоны $\kDnu$ и $\kdnu$ при
+          теоретическом значении $k = 1$;
     \item на примере спектра последовательности цугов подтверждена теорема
-          смещения, для цугов $\Delta\nu\cdot\tau = 0{,}99 \pm 0{,}01$;
-    \item для амплитудно-модулированного сигнала получено
-          $a_{\text{бок}}/a_{\text{осн}} = (0{,}513 \pm 0{,}009)\,m$ при
-          теоретическом коэффициенте $0{,}5$;
-    \item качественно показано, что $RC$-цепочка работает как фильтр
+          смещения: центр спектра совпадает с частотой несущей $\nu_0$,
+          шаг гармоник равен $1/T$, а для ширины спектра
+          $\Delta\nu = k\nu_0/N$ получено $k = \kBurst$;
+    \item для амплитудно-модулированного сигнала при $m = 1$ получено
+          $a_{\text{бок}}/a_{\text{осн}} = \amRatio$ (теория $0{,}5$);
+    \item обнаружено наложение частот в спектре меандра и определена
+          частота дискретизации спектроанализатора
+          $\nu_{\text{дискр}} = \fsamp$~кГц;
+    \item определена постоянная времени $RC$-цепочки
+          $\tau_{RC} = \filtRC$~мкс и показано, что она работает как фильтр
           низких частот.
 \end{itemize}
 

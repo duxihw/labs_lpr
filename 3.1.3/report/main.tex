@@ -1,0 +1,652 @@
+\documentclass[a4paper,12pt]{article}
+
+% ===========================================================================
+%  Лабораторная работа 3.1.3 «Измерение магнитного поля Земли»
+%
+%  Сборка:  cd 3.1.3/report && latexmk -pdf main.tex
+%  Таблицы и графики читаются из ../data/processed/*.csv, а итоговые числа --
+%  из ../data/processed/results.tex; всё это готовит ../scripts/process_data.py.
+%  Пока данных нет, на месте чисел стоит ???, на месте текста -- «?? НЕОБХОДИМО ЗАПОЛНИТЬ ??».
+% ===========================================================================
+
+\input{../../common/latex_template/preamble.tex}
+
+% Пакеты, нужные именно этой работе
+\usepackage{subcaption}
+\usetikzlibrary{arrows.meta, patterns}
+
+% --- Служебные макросы ------------------------------------------------------
+\newcommand{\qq}{\textbf{???}}
+\newcommand{\fillme}{\textbf{?? НЕОБХОДИМО ЗАПОЛНИТЬ ??}}
+\newcommand{\filename}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\labimage}[2]{%
+    \IfFileExists{img/#1}{%
+        \includegraphics[width=#2\linewidth]{img/#1}%
+    }{%
+        \fbox{\parbox[c][0.4\dimexpr#2\linewidth\relax][c]{%
+                \dimexpr#2\linewidth-2\fboxsep-2\fboxrule\relax}{%
+            \centering\small\filename{img/#1}\\[2mm]\fillme}}%
+    }%
+}
+% Итоговые числа из ../data/processed/results.tex (пишет process_data.py):
+%   \res{key} -> «значение \pm погрешность», \resv{key} -> значение,
+%   \ress{key} -> погрешность, \rese{key} -> относительная погрешность, %.
+% Ключи -- см. data/processed/fit_results.csv. Нет числа -- выводится ???.
+\InputIfFileExists{../data/processed/results.tex}{}{}
+\newcommand{\resget}[1]{\ifcsname res@#1\endcsname\csname res@#1\endcsname\else\qq\fi}
+\newcommand{\res}[1]{\resget{#1}}
+\newcommand{\resv}[1]{\resget{#1@v}}
+\newcommand{\ress}[1]{\resget{#1@s}}
+\newcommand{\rese}[1]{\resget{#1@e}}
+% Магнитный момент
+\newcommand{\mm}{\mathfrak{m}}
+
+% Колонтитулы (как в остальных работах репозитория)
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{%
+    \IfFileExists{../../common/latex_template/miptlogo.png}{%
+        \includegraphics[height=1cm]{../../common/latex_template/miptlogo.png}%
+    }{%
+        \textbf{[ЛОГОТИП МФТИ]}%
+    }%
+}
+\fancyhead[R]{\textbf{Емельянов ДА, Байдин ФМ}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{33pt}
+
+\begin{document}
+
+% --- ТИТУЛЬНЫЙ ЛИСТ ---
+\begin{titlepage}
+\begin{center}
+    {\large МОСКОВСКИЙ ФИЗИКО-ТЕХНИЧЕСКИЙ ИНСТИТУТ}
+\end{center}
+\begin{center}
+    {\large Физтех-школа физики и исследований им. Ландау\break ЛФИ}
+\end{center}
+
+    \vspace{3cm}
+
+\vspace{0.15cm}
+{
+\begin{center}
+    \huge \bf Лабораторная работа №3.1.3 по курсу Общая физика\\
+    \vspace{0.4cm}
+    \LARGE Измерение магнитного поля Земли.
+\end{center}
+}
+\vspace{1.5cm}
+\begin{flushright}
+Емельянов Дмитрий Алексеевич\\
+Байдин Фаддей Михайлович\\
+\vspace{0.4cm}
+Б02-502
+\end{flushright}
+\vspace{10cm}
+\begin{center}
+    \large \qq{} 2026, г. Долгопрудный
+\end{center}
+\end{titlepage}
+% ----------------------
+
+\section{Аннотация}
+В работе исследуются свойства постоянных неодимовых магнитов шарообразной
+формы и с их помощью измеряются горизонтальная и вертикальная составляющие
+индукции магнитного поля Земли и магнитное наклонение.
+
+Магнитный момент шарика определяется двумя методами: по максимальному
+расстоянию, на котором два шарика удерживают друг друга в поле тяжести, и
+по силе сцепления шариков (по весу отрывающейся цепочки). По нему
+рассчитываются намагниченность и остаточная индукция материала NdFeB.
+Горизонтальная составляющая поля Земли находится по периоду крутильных
+колебаний «магнитной стрелки» из $n$ шариков, вертикальная --- по
+моменту силы тяжести груза, уравновешивающего стрелку в горизонтальном
+положении. Линейность зависимостей $T(n)$ и $\mathcal{M}(n)$ проверяет
+аддитивность магнитных моментов шариков. Ожидается, что
+остаточная индукция окажется порядка $1$~Тл, а параметры поля Земли
+согласуются по порядку величины со справочными для Московского региона.
+
+\section{Теоретические сведения}
+Расчёт ведётся в гауссовой системе (СГС), как в методическом пособии;
+итоговые значения индукции переводятся в СИ ($1~\text{Гс} = 10^{-4}~\text{Тл}
+= 100$~мкТл, $1~\text{эрг/Гс} = 10^{-3}~\text{А}\cdot\text{м}^2$).
+
+\subsection{Точечный магнитный диполь}
+Поле точечного диполя с моментом $\boldsymbol{\mm}$
+\begin{equation}
+    \label{eq:dipole}
+    \mathbf{B} = \frac{3(\boldsymbol{\mm}\cdot\mathbf{r})\mathbf{r}}{r^5}
+                 - \frac{\boldsymbol{\mm}}{r^3}
+    \qquad \left(\text{в СИ домножить на } \tfrac{\mu_0}{4\pi}\right).
+\end{equation}
+Во внешнем поле на диполь действуют момент сил и (в неоднородном поле) сила
+\begin{equation}
+    \label{eq:torque}
+    \boldsymbol{\mathcal{M}} = [\boldsymbol{\mm}\times\mathbf{B}],
+    \qquad
+    W = -(\boldsymbol{\mm}\cdot\mathbf{B}),
+    \qquad
+    \mathbf{F} = -\nabla W = (\boldsymbol{\mm}\cdot\nabla)\mathbf{B}.
+\end{equation}
+Два диполя, направленных вдоль соединяющей их прямой, притягиваются (при
+сонаправленных моментах) с силой
+\begin{equation}
+    \label{eq:F12}
+    F_{12} = \frac{6\mm_1\mm_2}{r^4}.
+\end{equation}
+
+\subsection{Однородно намагниченный шар}
+Вне однородно намагниченного шара радиуса $R$ поле совпадает с полем
+точечного диполя в его центре, внутри шара поле однородно:
+\begin{equation}
+    \label{eq:B0ball}
+    B_0 = \frac{2\mm}{R^3}.
+\end{equation}
+Намагниченность $M$ и остаточная индукция $B_r$ материала:
+\begin{equation}
+    \label{eq:magnetization}
+    \mm = MV, \quad V = \frac{4}{3}\pi R^3, \qquad B_r = 4\pi M,
+\end{equation}
+индукция на полюсах шара
+\begin{equation}
+    \label{eq:Bp}
+    B_p = B_0 = \frac{2}{3}B_r.
+\end{equation}
+Существенно, что материал магнитожёсткий: моменты шариков не меняются во
+внешних полях и при контакте друг с другом, поэтому магнитный момент
+системы шариков равен сумме их моментов.
+
+\subsection{Определение магнитного момента шарика}
+\paragraph{Метод А.} На предельном расстоянии $r_\text{max}$ между центрами
+шариков сила притяжения \cref{eq:F12} равна весу нижнего шарика массы $m$:
+\begin{equation}
+    \label{eq:methodA}
+    \mm = \sqrt{\frac{mg\,r_\text{max}^4}{6}}.
+\end{equation}
+
+\paragraph{Метод Б.} Сила сцепления двух соприкасающихся шариков ($r = 2R$)
+\begin{equation}
+    \label{eq:F0}
+    F_0 = \frac{6\mm^2}{(2R)^4} = \frac{3\mm^2}{8R^4}.
+\end{equation}
+Верхний шарик удерживает цепочку, взаимодействуя с несколькими ближайшими
+шариками ($F\propto 1/r^4$), поэтому вес отрывающейся цепочки
+\begin{equation}
+    \label{eq:chain}
+    F = F_0\left(1 + \frac{1}{2^4} + \frac{1}{3^4} + \frac{1}{4^4} + \ldots\right)
+      \approx 1{,}08\,F_0,
+    \qquad
+    \mm = \sqrt{\frac{8R^4 F_0}{3}}.
+\end{equation}
+
+\subsection{Горизонтальная составляющая поля Земли}
+«Стрелка» из $n$ сцепленных шариков, подвешенная горизонтально на
+$\Lambda$-образном подвесе, совершает крутильные колебания под действием
+момента $\mathcal{M} = -n\mm B_\parallel\sin\theta$. При малых углах и
+пренебрежимой упругости нити
+\begin{equation}
+    \label{eq:Tn_general}
+    T = 2\pi\sqrt{\frac{J_n}{n\mm B_\parallel}},
+    \qquad
+    J_n \approx \frac{1}{12}(nm)(2nR)^2 = \frac{1}{3}n^3 mR^2,
+\end{equation}
+откуда период пропорционален числу шариков:
+\begin{equation}
+    \label{eq:Tn}
+    T_n = k_T\,n, \qquad k_T = 2\pi\sqrt{\frac{mR^2}{3\mm B_\parallel}}
+    \quad\Rightarrow\quad
+    B_\parallel = \frac{4\pi^2 mR^2}{3\mm k_T^2}.
+\end{equation}
+
+\subsection{Вертикальная составляющая и наклонение}
+Стрелка из чётного числа шариков, подвешенная за середину в одной точке,
+наклоняется под действием вертикальной составляющей $B_\perp$. Её
+выравнивают грузом массы $m_\text{гр}$ на плече $r_\text{гр}$:
+\begin{equation}
+    \label{eq:moment}
+    \mathcal{M}_n = m_\text{гр}\,g\,r_\text{гр} = n\mm B_\perp
+    \quad\Rightarrow\quad
+    B_\perp = \frac{k_\mathcal{M}}{\mm},
+\end{equation}
+где $k_\mathcal{M}$ --- наклон прямой $\mathcal{M}(n)$. Магнитное
+наклонение и полная индукция
+\begin{equation}
+    \label{eq:beta}
+    \operatorname{tg}\beta = \frac{B_\perp}{B_\parallel},
+    \qquad
+    B = \sqrt{B_\parallel^2 + B_\perp^2}.
+\end{equation}
+Если считать Землю однородно намагниченным вдоль оси вращения шаром
+(диполь в центре), то на широте $\varphi$
+\begin{equation}
+    \label{eq:earth_dipole}
+    B_\parallel = \frac{\mu_0}{4\pi}\frac{\mm_\text{З}\cos\varphi}{R_\text{З}^3},
+    \qquad
+    B_\perp = \frac{\mu_0}{4\pi}\frac{2\mm_\text{З}\sin\varphi}{R_\text{З}^3},
+    \qquad
+    \operatorname{tg}\beta = 2\operatorname{tg}\varphi.
+\end{equation}
+
+\subsection{Основные допущения}
+\begin{itemize}
+    \item шарики однородно намагничены и магнитожёстки (моменты аддитивны);
+    \item в методе Б учитываются 4 члена ряда \cref{eq:chain};
+    \item момент инерции стрелки --- как у тонкого стержня
+          (\cref{eq:Tn_general}), упругость нити не учитывается;
+    \item колебания малые ($\sin\theta\approx\theta$);
+    \item поле Земли в месте опыта однородно и не искажено посторонними
+          магнитными предметами.
+\end{itemize}
+
+\section{Методика измерений}
+
+\begin{figure}[!ht]
+    \centering
+    \begin{subfigure}[b]{0.3\textwidth}
+        \centering
+        \begin{tikzpicture}[>=Stealth, font=\small]
+            \fill[pattern=north east lines] (-1,0) rectangle (1,0.5);
+            \draw (-1,0) rectangle (1,0.5);
+            \draw[gray] (-0.8,0.5) -- (0.8,0.5) -- (0.8,0.58) -- (-0.8,0.58) -- cycle;
+            \shade[ball color=gray!60] (0,0.98) circle (0.4);
+            \shade[ball color=gray!60] (0,-0.4) circle (0.4);
+            \draw[->, thick] (0,-0.65) -- (0,-0.15);
+            \draw[->, thick] (0,0.73) -- (0,1.23);
+            \draw[<->] (0.75,-0.4) -- (0.75,0.98) node[midway, right] {$r_\text{max}$};
+            \draw[->] (-0.6,-0.4) -- (-0.6,-1.2) node[left] {$mg$};
+        \end{tikzpicture}
+        \caption{метод А}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.33\textwidth}
+        \centering
+        \begin{tikzpicture}[>=Stealth, font=\small]
+            \draw[thick] (0,2.2) -- (0,1.5);
+            \draw (0,1.5) -- (-0.9,0.3);
+            \draw (0,1.5) -- (0.9,0.3);
+            \foreach \i in {0,...,5}
+                \shade[ball color=gray!60] (-1.25+0.5*\i,0) circle (0.25);
+            \draw[->, thick] (-1.6,-0.55) -- (1.6,-0.55) node[below] {$B_\parallel$};
+            \node at (-1.5,0.45) {S};
+            \node at (1.5,0.45) {N};
+        \end{tikzpicture}
+        \caption{стрелка на $\Lambda$-подвесе}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.33\textwidth}
+        \centering
+        \begin{tikzpicture}[>=Stealth, font=\small]
+            \draw[thick] (0,2.0) -- (0,0.25);
+            \foreach \i in {0,...,5}
+                \shade[ball color=gray!60] (-1.25+0.5*\i,0) circle (0.25);
+            \draw[thick] (0.75,0.25) -- (0.75,0.45);
+            \fill (0.75,0.45) circle (0.06);
+            \draw[<->] (0,0.75) -- (0.75,0.75) node[midway, above] {$r_\text{гр}$};
+            \draw[->] (0.75,0.45) -- (0.75,1.3);
+            \node[right] at (0.8,1.1) {$m_\text{гр}$};
+            \draw[->, thick] (-1.6,-0.55) -- (-0.2,-1.0) node[right] {$\mathbf{B}$};
+        \end{tikzpicture}
+        \caption{измерение $B_\perp$}
+    \end{subfigure}
+    \caption{Схемы опытов: а) определение $r_\text{max}$ (между шариками ---
+             немагнитный брусок и листы бумаги); б) крутильный маятник;
+             в) уравновешивание стрелки грузом}
+    \label{fig:setup}
+\end{figure}
+
+\begin{enumerate}
+    \item Штангенциркулем измеряется диаметр $d = 2R$ шариков, на весах
+          (через немагнитную подставку) --- масса $m$; магнитометром
+          измеряется индукция на полюсе $B_p$.
+    \item \textbf{Метод А} (\cref{fig:setup}а): между шариками
+          прокладывается немагнитный брусок и подкладываются листы бумаги до
+          тех пор, пока нижний шарик ещё удерживается; измеряется зазор $h$,
+          $r_\text{max} = h + d$.
+    \item \textbf{Метод Б}: к цепочке из 20--30 шариков подвешивается гиря
+          (общая масса $\sim500$~г); добавляя и убирая шарики, находят
+          минимальную массу $M$ отрывающейся системы, $F = Mg$.
+    \item \textbf{Горизонтальная составляющая} (\cref{fig:setup}б):
+          для $n = 3,\dots,12$ после юстировки стрелки в горизонтальное
+          положение измеряется время $t$ нескольких колебаний,
+          $T = t/N_\text{кол}$. Влияние упругости нити оценивается по
+          колебаниям стрелки, свёрнутой в кольцо ($\mm_n = 0$).
+    \item \textbf{Вертикальная составляющая} (\cref{fig:setup}в):
+          для $n = 4,6,\dots,12$ стрелка, подвешенная за середину,
+          уравновешивается кусочками проволоки; на весах определяется масса
+          груза $m_\text{гр}$, линейкой --- плечо $r_\text{гр}$.
+\end{enumerate}
+
+Обработка данных выполняется скриптом
+\filename{scripts/process_data.py}.
+Коэффициенты прямых $T(n)$ и $\mathcal{M}(n)$ находятся методом наименьших
+квадратов (через начало координат, как предсказывает теория; для контроля
+--- с учётом свободного члена). Погрешности косвенных величин:
+\begin{gather}
+    \label{eq:errors}
+    \varepsilon_{\mm}^{(\text{А})} = \sqrt{\left(\tfrac12\varepsilon_m\right)^2 + (2\varepsilon_{r})^2},
+    \qquad
+    \varepsilon_{\mm}^{(\text{Б})} = \sqrt{\left(\tfrac12\varepsilon_M\right)^2 + (2\varepsilon_{R})^2},
+    \\
+    \varepsilon_{B_\parallel} = \sqrt{\varepsilon_m^2 + 4\varepsilon_R^2 + \varepsilon_\mm^2 + 4\varepsilon_{k_T}^2},
+    \qquad
+    \varepsilon_{B_\perp} = \sqrt{\varepsilon_{k_\mathcal{M}}^2 + \varepsilon_\mm^2}. \notag
+\end{gather}
+Внимание: магнитные предметы (ножницы, металлическая линейка, телефоны)
+вблизи установки искажают результат.
+
+\section{Используемое оборудование}
+
+\begin{table}[!ht]
+    \centering
+    \caption{Измерительные приборы и их погрешности}
+    \label{tab:equipment}
+    \begin{tblr}{colspec={|X[2,l]|X[2,l]|X[1.3,c]|}, hlines, vlines,
+                 row{1}={font=\bfseries}, width=\textwidth}
+        Прибор & Измеряемая величина & Погрешность \\
+        Штангенциркуль & диаметр шарика $d$ & $\qq$~мм \\
+        Электронные весы & $m$, $M$, $m_\text{гр}$ & $\qq$~г \\
+        Измеритель магнитной индукции \qq & $B_p$ & $\qq$~мТл \\
+        Секундомер & время колебаний $t$ & $\sigma_t = \qq$~с \\
+        Линейка (немагнитная) & плечо $r_\text{гр}$, зазор $h$ & $\qq$~мм \\
+    \end{tblr}
+\end{table}
+
+Также используются: неодимовые магнитные шарики, магниты-параллелепипеды,
+тонкая нить, медная проволока, немагнитные брусок и штатив, набор гирь и
+разновесов.
+
+Предварительная оценка: в методе А расстояние $r_\text{max}$ входит в
+четвёртой степени, поэтому погрешность $\mm$ определяется в основном
+точностью $r_\text{max}$; в методе Б --- точностью $R$. \fillme
+
+\section{Результаты измерений и обработка данных}
+
+\subsection{I. Магнитный момент, намагниченность и остаточная индукция}
+Диаметр шарика $d = \res{d}$~мм, масса $m = \res{m}$~г, измеренная
+индукция на полюсе $B_p^\text{изм} = \res{Bpmeas}$~мТл.
+
+\paragraph{Метод А.} Результаты измерения предельного расстояния
+приведены в \cref{tab:rmax}.
+
+\begin{table}[!ht]
+    \centering
+    \caption{Метод А: предельный зазор между поверхностями шариков $h$ и
+             расстояние между центрами $r_\text{max} = h + d$}
+    \label{tab:rmax}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|},
+            hlines, vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {
+            \textbf{№} & \textbf{$h$, мм} & \textbf{$r_\text{max}$, мм} \\
+        }
+    ]%
+    {../data/processed/rmax_processed.csv}%
+    {trial=\csvN, h_mm=\csvH, r_max_mm=\csvR}%
+    {%
+        ${}\csvN$ & ${}\csvH$ & ${}\csvR$
+    }
+\end{table}
+
+$r_\text{max} = \res{rmax}$~мм, по \cref{eq:methodA}
+\begin{equation}
+    \mm_A = \res{mA}~\text{эрг/Гс}, \qquad \varepsilon = \rese{mA}\,\%.
+\end{equation}
+
+\paragraph{Метод Б.} Масса отрывающейся системы приведена в
+\cref{tab:chain}.
+
+\begin{table}[!ht]
+    \centering
+    \caption{Метод Б: масса $M$ и вес $F$ отрывающейся цепочки с гирей}
+    \label{tab:chain}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|},
+            hlines, vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {
+            \textbf{№} & \textbf{$M$, г} & \textbf{$F$, Н} \\
+        }
+    ]%
+    {../data/processed/chain_break_processed.csv}%
+    {trial=\csvN, M_g=\csvM, F_N=\csvF}%
+    {%
+        ${}\csvN$ & ${}\csvM$ & ${}\csvF$
+    }
+\end{table}
+
+$M = \res{Mchain}$~г, сила сцепления $F_0 = F/1{,}08 = \res{Fzero}$~Н, по
+\cref{eq:chain}
+\begin{equation}
+    \mm_\text{Б} = \res{mB}~\text{эрг/Гс}, \qquad \varepsilon = \rese{mB}\,\%.
+\end{equation}
+
+\paragraph{Сравнение методов.} \fillme{} Для дальнейших расчётов принято
+\begin{equation}
+    \label{eq:mu_result}
+    \mm = \res{mu}~\text{эрг/Гс} = \res{muSI}~\text{А}\cdot\text{м}^2.
+\end{equation}
+
+\paragraph{Намагниченность и остаточная индукция.} По
+\cref{eq:magnetization,eq:Bp}
+\begin{equation}
+    M = \res{Mag}~\text{Гс},
+    \qquad
+    B_r = \res{Br}~\text{Тл},
+    \qquad
+    B_p^\text{расч} = \res{Bpcalc}~\text{мТл}.
+\end{equation}
+Табличное значение для NdFeB: $B_r \approx 1{,}0\div1{,}4$~Тл.
+Расчётное значение $B_p$ отличается от измеренного на $\res{Bpdev}$\,\%.
+
+\subsection{II. Горизонтальная составляющая магнитного поля Земли}
+Период колебаний стрелки, свёрнутой в кольцо:
+$T_\text{кольцо} = \res{Tring}$~с. \fillme{} (вывод о влиянии упругости нити).
+
+Зависимость периода крутильных колебаний от числа шариков приведена в
+\cref{tab:torsion} и на \cref{fig:Tn}.
+
+\begin{table}[!ht]
+    \centering
+    \caption{Период крутильных колебаний стрелки из $n$ шариков;
+             $\sigma_T = \sigma_t/N_\text{кол}$}
+    \label{tab:torsion}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|c|c|},
+            hlines, vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {
+            \textbf{$n$} & \textbf{$N_\text{кол}$} & \textbf{$t$, с}
+            & \textbf{$T$, с} & \textbf{$\sigma_T$, с} \\
+        }
+    ]%
+    {../data/processed/torsion_period_processed.csv}%
+    {n=\csvN, N_osc=\csvNosc, t_s=\csvT, T_s=\csvPer, sigma_T_s=\csvSPer}%
+    {%
+        ${}\csvN$ & ${}\csvNosc$ & ${}\csvT$ & ${}\csvPer$ & ${}\csvSPer$
+    }
+\end{table}
+
+\begin{figure}[!ht]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            width=0.8\textwidth,
+            height=0.5\textwidth,
+            xlabel={$n$},
+            ylabel={$T$, с},
+            xmin=0, xmax=13, ymin=0,
+            xtick distance=1,
+            grid=both,
+            minor y tick num=1,
+            legend pos=north west,
+        ]
+            \addplot[
+                only marks, mark=*, mark size=1.8pt,
+                error bars/y dir=both, error bars/y explicit,
+            ] table[col sep=comma, x=n, y=T_s, y error=sigma_T_s]
+                {../data/processed/torsion_period_processed.csv};
+            \addlegendentry{эксперимент}
+            \addplot[no marks, thin] table[col sep=comma, x=x, y=y]
+                {../data/processed/fit_T.csv};
+            \addlegendentry{МНК: $T = k_T n$, $k_T = \res{kT}$~с}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Зависимость периода крутильных колебаний стрелки от числа
+             шариков}
+    \label{fig:Tn}
+\end{figure}
+
+Методом наименьших квадратов (прямая через начало координат)
+\begin{equation}
+    k_T = \res{kT}~\text{с}, \qquad \varepsilon_{k_T} = \rese{kT}\,\%;
+\end{equation}
+при аппроксимации $T = kn + b$: $k = \res{kTb}$~с, $b = \res{bT}$~с.
+Зависимость линейна: \fillme. По \cref{eq:Tn,eq:errors}
+\begin{equation}
+    \label{eq:Bpar_result}
+    B_\parallel = \res{Bpar}~\text{мкТл}, \qquad \varepsilon = \rese{Bpar}\,\%.
+\end{equation}
+
+\subsection{III. Вертикальная составляющая магнитного поля Земли}
+Результаты уравновешивания стрелки приведены в \cref{tab:moment} и на
+\cref{fig:Mn}.
+
+\begin{table}[!ht]
+    \centering
+    \caption{Момент сил $\mathcal{M} = m_\text{гр}gr_\text{гр}$,
+             уравновешивающий стрелку из $n$ шариков}
+    \label{tab:moment}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|c|c|},
+            hlines, vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {
+            \textbf{$n$} & \textbf{$m_\text{гр}$, мг} & \textbf{$r_\text{гр}$, мм}
+            & \textbf{$\mathcal{M}$, дин$\cdot$см}
+            & \textbf{$\sigma_\mathcal{M}$, дин$\cdot$см} \\
+        }
+    ]%
+    {../data/processed/moment_processed.csv}%
+    {n=\csvN, m_gr_mg=\csvMgr, r_gr_mm=\csvRgr, M_dyncm=\csvMom, sigma_M_dyncm=\csvSMom}%
+    {%
+        ${}\csvN$ & ${}\csvMgr$ & ${}\csvRgr$ & ${}\csvMom$ & ${}\csvSMom$
+    }
+\end{table}
+
+\begin{figure}[!ht]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            width=0.8\textwidth,
+            height=0.5\textwidth,
+            xlabel={$n$},
+            ylabel={$\mathcal{M}$, дин$\cdot$см},
+            xmin=0, xmax=13, ymin=0,
+            xtick distance=1,
+            grid=both,
+            minor y tick num=1,
+            legend pos=north west,
+        ]
+            \addplot[
+                only marks, mark=square*, mark size=1.8pt,
+                error bars/y dir=both, error bars/y explicit,
+            ] table[col sep=comma, x=n, y=M_dyncm, y error=sigma_M_dyncm]
+                {../data/processed/moment_processed.csv};
+            \addlegendentry{эксперимент}
+            \addplot[no marks, thin] table[col sep=comma, x=x, y=y]
+                {../data/processed/fit_M.csv};
+            \addlegendentry{МНК: $\mathcal{M} = k_\mathcal{M} n$, $k_\mathcal{M} = \res{kM}$~дин$\cdot$см}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Зависимость момента сил, действующего на стрелку со стороны
+             вертикальной составляющей поля Земли, от числа шариков}
+    \label{fig:Mn}
+\end{figure}
+
+Наклон прямой (через начало координат)
+\begin{equation}
+    k_\mathcal{M} = \res{kM}~\text{дин}\cdot\text{см},
+    \qquad \varepsilon = \rese{kM}\,\%;
+\end{equation}
+при аппроксимации $\mathcal{M} = kn + b$: $k = \res{kMb}$~дин$\cdot$см,
+$b = \res{bM}$~дин$\cdot$см. Вывод об аддитивности моментов: \fillme.
+По \cref{eq:moment}
+\begin{equation}
+    \label{eq:Bperp_result}
+    B_\perp = \res{Bperp}~\text{мкТл}, \qquad \varepsilon = \rese{Bperp}\,\%.
+\end{equation}
+
+\subsection{IV. Магнитное наклонение и полное поле}
+По \cref{eq:beta}
+\begin{equation}
+    \beta = \res{beta}^\circ,
+    \qquad
+    B = \res{Btot}~\text{мкТл}.
+\end{equation}
+В дипольной модели \cref{eq:earth_dipole} на широте Долгопрудного
+$\varphi = \res{lat}^\circ$ наклонение $\beta_\text{теор} = \res{betath}^\circ$.
+Магнитный момент Земли, оценённый по $B_\parallel$:
+$\mm_\text{З} = (\res{mE})\cdot10^{22}$~А$\cdot$м$^2$.
+
+\begin{table}[!ht]
+    \centering
+    \caption{Сравнение результатов со справочными данными для Московского
+             региона (модель WMM или IGRF)}
+    \label{tab:compare}
+    \begin{tblr}{colspec={|c|c|c|}, hlines, vlines, row{1}={font=\bfseries}}
+        Величина & Эксперимент & Справочное значение \\
+        $B_\parallel$, мкТл & $\res{Bpar}$ & $\qq$ \\
+        $B_\perp$, мкТл & $\res{Bperp}$ & $\qq$ \\
+        $B$, мкТл & $\res{Btot}$ & $\qq$ \\
+        $\beta$, $^\circ$ & $\res{beta}$ & $\qq$ \\
+        $\mm_\text{З}$, $10^{22}$~А$\cdot$м$^2$ & $\res{mE}$ & $\qq$ \\
+    \end{tblr}
+\end{table}
+
+\section{Обсуждение результатов}
+\begin{itemize}
+    \item Сравнение методов А и Б определения $\mm$: \fillme{}
+          (какой точнее и почему; в методе А $r_\text{max}$ входит в
+          четвёртой степени).
+    \item Остаточная индукция $B_r = \res{Br}$~Тл по сравнению с табличной
+          для NdFeB; согласие расчётного и измеренного $B_p$: \fillme.
+    \item Линейность $T(n)$ и $\mathcal{M}(n)$ и свободные члены прямых ---
+          проверка аддитивности магнитных моментов и магнитожёсткости
+          материала: \fillme.
+    \item Влияние упругости нити (опыт с кольцом) и приближения тонкого
+          стержня для $J_n$ при малых $n$: \fillme.
+    \item Сравнение $B_\parallel$, $B_\perp$, $\beta$ со справочными значениями;
+          влияние искажения поля в здании и посторонних магнитных
+          предметов: \fillme.
+    \item Применимость дипольной модели Земли (несовпадение магнитной и
+          географической осей): \fillme.
+\end{itemize}
+
+\section{Заключение}
+\begin{itemize}
+    \item Магнитный момент неодимового шарика: $\mm = \res{muSI}$~А$\cdot$м$^2$;
+          остаточная индукция материала $B_r = \res{Br}$~Тл.
+    \item Горизонтальная составляющая поля Земли
+          $B_\parallel = \res{Bpar}$~мкТл, вертикальная
+          $B_\perp = \res{Bperp}$~мкТл.
+    \item Магнитное наклонение $\beta = \res{beta}^\circ$, полная индукция
+          $B = \res{Btot}$~мкТл.
+\end{itemize}
+\fillme
+
+\appendix
+\section{Лабораторный журнал}
+\labimage{journal.jpg}{1.0}
+
+\end{document}

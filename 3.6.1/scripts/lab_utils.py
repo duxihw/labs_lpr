@@ -46,7 +46,7 @@ def read_raw(name: str) -> pd.DataFrame:
 
 
 def write_processed(df: pd.DataFrame, name: str, columns: list[str] | None = None) -> None:
-    """Пишет обработанные данные в data/processed/.
+    """Пишет обработанные данные в data/processed/ (разделитель «;»).
 
     Если данных нет, файл всё равно создаётся -- только с заголовком,
     чтобы отчёт LaTeX собирался и до проведения измерений.
@@ -57,7 +57,8 @@ def write_processed(df: pd.DataFrame, name: str, columns: list[str] | None = Non
             df = pd.DataFrame(columns=columns)
         else:
             df = df.reindex(columns=columns)
-    df.to_csv(PROC_DIR / name, index=False)
+    # Разделитель «;»: текстовые ячейки для LaTeX содержат запятую ({,})
+    df.to_csv(PROC_DIR / name, index=False, sep=";")
     print(f"  -> data/processed/{name} ({len(df)} строк)")
 
 

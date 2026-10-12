@@ -1,0 +1,665 @@
+\documentclass[a4paper,12pt]{article}
+
+% ===========================================================================
+%  Лабораторная работа 3.3.4 «Эффект Холла в полупроводниках»
+%
+%  Сборка:  cd 3.3.4/report && pdflatex main.tex && pdflatex main.tex
+%  Таблицы читаются из ../data/processed/*.csv, итоговые числа --
+%  из ../data/processed/results.tex, графики -- из images/*.pdf.
+%  Всё это готовят ../scripts/process_data.py и ../scripts/plot_data.py.
+%  До проведения измерений на месте чисел стоит «???», на месте
+%  графиков -- рамки-заглушки.
+% ===========================================================================
+
+\input{../../common/latex_template/preamble.tex}
+
+% Пакеты, нужные именно этой работе
+\usepackage{subcaption}
+\usepackage{circuitikz}
+\usepackage{siunitx}
+\sisetup{output-decimal-marker={,}, group-digits=false}
+
+% --- Служебные макросы ------------------------------------------------------
+% Короткий пропуск (число/слово, которое надо вписать после измерений)
+\newcommand{\qq}{\textbf{???}}
+% Пропуск, требующий осмысленного текста
+\newcommand{\fillme}{\textbf{?? НЕОБХОДИМО ЗАПОЛНИТЬ ??}}
+% Имя файла моноширинным шрифтом (символы «_» и т.п. экранировать не нужно)
+\newcommand{\filename}[1]{\texttt{\detokenize{#1}}}
+% Число из CSV: десятичная запятая; пустая ячейка -> прочерк
+% (protected: в «собираемых» таблицах csvsimple значения подставляются
+%  через \csvexpval, а сам \cnum раскрывается уже внутри ячейки)
+\NewDocumentCommand{\cnum}{m}{\edef\cnumtmp{#1}%
+    \ifx\cnumtmp\empty --\else\num{\cnumtmp}\fi}
+% График из report/images/. Если файла ещё нет -- рамка-заглушка.
+% #1 -- имя файла, #2 -- доля ширины окружения.
+\newcommand{\labimage}[2]{%
+    \IfFileExists{images/#1}{%
+        \includegraphics[width=#2\linewidth]{images/#1}%
+    }{%
+        \fbox{\parbox[c][0.55\dimexpr#2\linewidth\relax][c]{%
+                \dimexpr#2\linewidth-2\fboxsep-2\fboxrule\relax}{%
+            \centering\small\filename{images/#1}\\[2mm]
+            (запустить \filename{scripts/plot_data.py})}}%
+    }%
+}
+
+% --- Итоговые числа ----------------------------------------------------------
+% Файл пишет process_data.py; если его нет, все величины -- «???».
+\InputIfFileExists{../data/processed/results.tex}{}{}
+\providecommand*{\ResK}{\qq}       \providecommand*{\ResKb}{\qq}
+\providecommand*{\ResRH}{\qq}      \providecommand*{\ResRHabs}{\qq}
+\providecommand*{\ResN}{\qq}       \providecommand*{\ResNcm}{\qq}
+\providecommand*{\ResRtf}{\qq}     \providecommand*{\ResRho}{\qq}
+\providecommand*{\ResRhoOhmCm}{\qq}\providecommand*{\ResSigma}{\qq}
+\providecommand*{\ResMu}{\qq}      \providecommand*{\ResKrev}{\qq}
+\providecommand*{\ResUohm}{\qq}    \providecommand*{\ResNu}{\qq}
+\providecommand*{\ResVT}{\qq}      \providecommand*{\ResLambda}{\qq}
+\providecommand*{\ResD}{\qq}       \providecommand*{\ResBmax}{\qq}
+\providecommand*{\ResCalibN}{\qq}
+\providecommand*{\ParA}{\qq}       \providecommand*{\ParH}{\qq}
+\providecommand*{\ParL}{\qq}       \providecommand*{\ParSN}{\qq}
+\providecommand*{\ParT}{\qq}       \providecommand*{\ParMeff}{\qq}
+\providecommand*{\ParEpsB}{\qq}
+
+% Настройка колонтитулов (как в остальных работах репозитория)
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{%
+    \IfFileExists{../../common/latex_template/miptlogo.png}{%
+        \includegraphics[height=1cm]{../../common/latex_template/miptlogo.png}%
+    }{%
+        \textbf{[ЛОГОТИП МФТИ]}%
+    }%
+}
+\fancyhead[R]{\textbf{Емельянов ДА, Байдин ФМ}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{33pt}
+
+% Подписи длинных таблиц (longtblr) по-русски
+\DefTblrTemplate{contfoot-text}{default}{Продолжение на следующей странице}
+\DefTblrTemplate{conthead-text}{default}{(продолжение)}
+
+\begin{document}
+
+% --- ТИТУЛЬНЫЙ ЛИСТ ---
+\begin{titlepage}
+\begin{center}
+    {\large МОСКОВСКИЙ ФИЗИКО-ТЕХНИЧЕСКИЙ ИНСТИТУТ}
+\end{center}
+\begin{center}
+    {\large Физтех-школа физики и исследований им. Ландау\break ЛФИ}
+\end{center}
+
+    \vspace{3cm}
+
+\vspace{0.15cm}
+{
+\begin{center}
+    \huge \bf Лабораторная работа №3.3.4 по курсу Общая физика\\
+    \vspace{0.4cm}
+    \LARGE Эффект Холла в полупроводниках.
+\end{center}
+}
+\vspace{1.5cm}
+\begin{flushright}
+Емельянов Дмитрий Алексеевич\\
+Байдин Фаддей Михайлович\\
+\vspace{0.4cm}
+Б02-502
+\end{flushright}
+\vspace{10cm}
+\begin{center}
+    \large \qq\ 2026, г. Долгопрудный
+\end{center}
+\end{titlepage}
+% ----------------------
+
+\section{Аннотация}
+В работе исследуется эффект Холла в образце легированного германия в
+геометрии мостика Холла. Через плоскую полупроводниковую пластинку,
+помещённую в перпендикулярное ей магнитное поле электромагнита,
+пропускается ток, и измеряется разность потенциалов между краями пластинки
+в направлении, поперечном току. По зависимости ЭДС Холла от индукции поля
+при различных токах через образец определяется постоянная Холла $R_H$, по её
+знаку --- тип проводимости, а по величине --- концентрация $n$ основных
+носителей заряда. Измерение удельного сопротивления образца в отсутствие
+поля позволяет найти удельную проводимость $\sigma_0$ и подвижность $\mu$
+носителей.
+
+\section{Теоретические сведения}
+
+\subsection{Проводимость и подвижность носителей}
+Под действием внешнего электрического поля $\vec E$ носители заряда в
+проводящей среде, многократно рассеиваясь на дефектах и колебаниях решётки,
+приобретают среднюю установившуюся скорость дрейфа, пропорциональную полю:
+\begin{equation}
+    \label{eq:drift}
+    \vec u_{\text{др}} = \mu\vec E,
+\end{equation}
+где коэффициент $\mu$ называется \emph{подвижностью} носителя тока. Знак
+$\mu$ совпадает со знаком заряда $q$. Взаимодействие с решёткой можно
+описать эффективной силой трения $\vec F_{\text{тр}} = -q\vec u/\mu$.
+При концентрации носителей $n$ плотность тока $\vec j = qn\vec u = qn\mu\vec
+E$, откуда следует закон Ома в дифференциальной форме $\vec j = \sigma\vec E$
+с удельной проводимостью
+\begin{equation}
+    \label{eq:sigma}
+    \sigma = qn\mu.
+\end{equation}
+В модели Друде, если $\nu$ --- частота столкновений носителя массы $m$ с
+решёткой, подвижность равна
+\begin{equation}
+    \label{eq:drude}
+    \mu = \frac{q}{m\nu}.
+\end{equation}
+
+В полупроводниках ток переносится электронами зоны проводимости и дырками
+валентной зоны (дырке приписывают заряд $+e$). В легированном
+полупроводнике, как правило, доминирует один тип носителей: электроны
+($n$-тип) или дырки ($p$-тип).
+
+\subsection{Эффект Холла}
+Во внешнем магнитном поле $\vec B$ на движущийся носитель действует сила
+Лоренца $\vec F = q\vec E + q\,\vec u\times\vec B$. Пусть ток течёт по оси $x$
+вдоль плоской пластинки, а поле $\vec B$ направлено по оси $z$
+перпендикулярно её плоскости. Магнитная составляющая силы Лоренца
+отклоняет носители к одному из краёв пластинки; там накапливается заряд, и
+возникает поперечное (\emph{холловское}) электрическое поле $E_y$. В
+стационарном состоянии оно полностью компенсирует магнитную силу, так что
+ток течёт строго вдоль $x$:
+\begin{equation}
+    \label{eq:Ey}
+    E_y = u_x B = \frac{j_x}{nq}B.
+\end{equation}
+
+Уравнение баланса сил $q(\vec E + \vec u\times\vec B) - q\vec u/\mu = 0$
+приводит к обобщённому закону Ома
+\begin{equation}
+    \label{eq:ohm_B}
+    \vec E = \frac{\vec j}{\sigma_0} - \frac{1}{nq}\,\vec j\times\vec B,
+    \qquad
+    \hat\rho = \frac{1}{\sigma_0}
+    \begin{pmatrix}
+        1 & -\mu B & 0\\
+        \mu B & 1 & 0\\
+        0 & 0 & 1
+    \end{pmatrix},
+\end{equation}
+где $\sigma_0 = qn\mu$ --- проводимость в отсутствие поля. Второе слагаемое
+описывает эффект Холла. Отметим, что диагональная компонента
+$\rho_{xx} = 1/\sigma_0$ от поля не зависит, т.\,е. в геометрии мостика
+Холла (при одном типе носителей) продольное сопротивление образца не
+меняется в магнитном поле.
+
+\subsection{Мостик Холла}
+Пусть пластинка имеет ширину $a$ (вдоль $y$), толщину $h$ (вдоль $z$), и
+через неё течёт ток $I$, так что $j_x = I/(ah)$. Холловское напряжение между
+краями пластинки $U_\perp = E_y a$ с учётом \cref{eq:Ey} равно
+\begin{equation}
+    \label{eq:hall}
+    U_\perp = \frac{B}{nqh}\,I = R_H\,\frac{B I}{h},
+\end{equation}
+где
+\begin{equation}
+    \label{eq:RH}
+    R_H = \frac{1}{nq}
+\end{equation}
+--- \emph{постоянная Холла}. Её знак совпадает со знаком заряда основных
+носителей, поэтому по знаку ЭДС Холла при известных направлениях тока и
+поля определяется тип проводимости. Модуль $R_H$ даёт концентрацию
+носителей $n = 1/(e|R_H|)$. Из \cref{eq:sigma,eq:RH} следует выражение для
+подвижности через измеряемые величины:
+\begin{equation}
+    \label{eq:mu}
+    \mu = \sigma_0 R_H.
+\end{equation}
+
+Согласно \cref{eq:hall}, при фиксированном токе $I$ напряжение $U_\perp$
+линейно зависит от $B$ с угловым коэффициентом
+\begin{equation}
+    \label{eq:k}
+    k = \frac{dU_\perp}{dB} = \frac{R_H}{h}\,I,
+\end{equation}
+который, в свою очередь, пропорционален току. Поэтому, построив зависимость
+$k(I)$ и определив её наклон $K = dk/dI$, получаем
+\begin{equation}
+    \label{eq:RH_from_K}
+    R_H = K h.
+\end{equation}
+
+Удельное сопротивление материала находится по падению напряжения $U_{35}$
+на участке образца длиной $l$ между контактами 3 и 5 в отсутствие поля:
+\begin{equation}
+    \label{eq:rho}
+    \rho_0 = \frac{1}{\sigma_0} = \frac{U_{35}\,a h}{I\,l}.
+\end{equation}
+
+\subsection{Исключение омической добавки}
+Холловские контакты 3 и 4 из-за неточности подпайки, как правило, лежат не
+на одной эквипотенциали, поэтому измеряемое напряжение
+$U_{34} = U_\perp + U_0$ содержит омическую добавку $U_0$, пропорциональную
+току через образец и не зависящую от поля. Её можно исключить двумя
+способами:
+\begin{enumerate}
+    \item измерить $U_0$ при выключенном магните для каждого тока $I$ и
+          отсчитывать ЭДС Холла от этого значения:
+          \begin{equation}
+              \label{eq:U0}
+              U_\perp = U_{34} - U_0;
+          \end{equation}
+    \item измерить $U_{34}$ при двух противоположных направлениях поля:
+          при обращении поля ЭДС Холла меняет знак, а $U_0$ --- нет, так
+          что
+          \begin{equation}
+              \label{eq:reverse}
+              U_\perp = \frac{U_{34}^{(+)} - U_{34}^{(-)}}{2},
+              \qquad
+              U_0 = \frac{U_{34}^{(+)} + U_{34}^{(-)}}{2}.
+          \end{equation}
+\end{enumerate}
+Основным в работе является первый способ, второй используется для контроля
+при максимальном токе через образец.
+
+\subsection{Кинетические оценки}
+По найденной подвижности можно оценить (контрольный вопрос 6) частоту
+столкновений $\nu = e/(m\mu)$ (\cref{eq:drude}), длину свободного пробега
+$\lambda = \bar v/\nu$, где для невырожденного газа носителей
+$\bar v \approx \sqrt{3k_BT/m}$, и коэффициент диффузии по соотношению
+Эйнштейна
+\begin{equation}
+    \label{eq:einstein}
+    D = \frac{\mu k_B T}{e}.
+\end{equation}
+
+\section{Используемое оборудование}
+\begin{itemize}
+    \item электромагнит с регулируемым источником питания, амперметр А1
+          (ток $I_\text{М}$ через обмотки), переключатель направления тока
+          К1;
+    \item милливеберметр с пробной катушкой или миллитесламетр на основе
+          датчика Холла (градуировка электромагнита);
+    \item образец легированного германия в держателе с контактами 1--5;
+    \item источник питания образца ($\simeq1{,}5$~В), реостат $R_2$,
+          ключ К2, миллиамперметр А2 (ток $I$ через образец);
+    \item цифровой вольтметр V (напряжения $U_{34}$ и $U_{35}$).
+\end{itemize}
+Параметры приборов и образца: \fillme.
+
+\section{Экспериментальная установка и методика измерений}
+Электрическая схема цепи образца показана на \cref{fig:setup}, расположение
+контактов на образце --- на \cref{fig:sample}. Образец помещается в зазор
+электромагнита так, что поле $\vec B$ перпендикулярно плоскости пластинки.
+Ток через образец течёт между контактами 1 и 2 вдоль длинной стороны
+пластинки, регулируется реостатом $R_2$ и не должен превышать $1$~мА.
+Холловское напряжение снимается с контактов 3 и 4, расположенных на
+противоположных краях пластинки, продольное падение напряжения --- с
+контактов 3 и 5, расположенных на одном краю на расстоянии $l$ друг от
+друга.
+
+\begin{figure}[!ht]
+    \centering
+    \begin{circuitikz}[scale=0.95, transform shape]
+        % образец
+        \draw[fill=gray!15] (3,0) rectangle (7,1.6);
+        \node at (5,0.8) {образец};
+        \fill (3,0.8) circle (1.5pt) node[left=1pt, yshift=6pt] {\small 1};
+        \fill (7,0.8) circle (1.5pt) node[right=1pt, yshift=6pt] {\small 2};
+        \fill (4.5,1.6) circle (1.5pt) node[above left] {\small 3};
+        \fill (4.5,0)   circle (1.5pt) node[below left] {\small 4};
+        \fill (6.0,1.6) circle (1.5pt) node[above right] {\small 5};
+        % цепь тока образца
+        \node[jump crossing] (X) at (1.5,-1.0) {};
+        \draw (3,0.8) -- (1.5,0.8) -- (X.north);
+        \draw (X.south) -- (1.5,-2.2);
+        \draw (1.5,-2.2) to[battery1, l_=$1{,}5$~В] (3.8,-2.2)
+              to[switch, l_=К2] (5.6,-2.2)
+              to[vR, l_=$R_2$] (7.6,-2.2)
+              to[rmeter, t=mA, l_=А2] (8.6,-2.2) -- (8.6,0.8) -- (7,0.8);
+        % вольтметр между 3 и 4
+        \draw (4.5,1.6) -- (4.5,2.4) -- (0,2.4)
+              to[rmeter, t=V] (0,-1.0) -- (X.west);
+        \draw (X.east) -- (4.5,-1.0) -- (4.5,0);
+        % поле
+        \node at (8.0,1.9) {$\vec B\odot$};
+    \end{circuitikz}
+    \caption{Схема цепи образца. Вольтметр V подключается к контактам 3--4
+             (ЭДС Холла) или 3--5 (продольное напряжение)}
+    \label{fig:setup}
+\end{figure}
+
+\begin{figure}[!ht]
+    \centering
+    \begin{tikzpicture}[scale=1.1, >=stealth]
+        \draw[fill=gray!15] (0,0) rectangle (6,1.8);
+        \foreach \x/\y/\n/\p in {0/0.9/1/left, 6/0.9/2/right,
+                                 2/1.8/3/above, 2/0/4/below, 4.5/1.8/5/above}
+            {\fill (\x,\y) circle (1.6pt) node[\p] {\small\n};}
+        \draw[->, thick] (0.5,0.9) -- (1.6,0.9) node[above] {$\vec j$};
+        \draw[<->] (2,2.35) -- node[above] {$l$} (4.5,2.35);
+        \draw[dashed] (2,1.85) -- (2,2.45) (4.5,1.85) -- (4.5,2.45);
+        \draw[<->] (6.5,0) -- node[right] {$a$} (6.5,1.8);
+        \node at (5.3,0.6) {$\vec B\odot$};
+        \node[align=left, anchor=west] at (7.2,0.9) {толщина $h$\\(вдоль $\vec B$)};
+    \end{tikzpicture}
+    \caption{Образец и расположение контактов (вид вдоль поля)}
+    \label{fig:sample}
+\end{figure}
+
+Порядок измерений:
+\begin{enumerate}
+    \item Градуировка электромагнита: зависимость индукции $B$ в зазоре от
+          тока $I_\text{М}$ через обмотки (не менее 15 точек во всём
+          диапазоне токов). При использовании милливеберметра измеряется
+          поток $\Phi = BSN$ через пробную катушку с известным значением
+          $SN$.
+    \item Для каждого из 6--8 значений тока $I$ через образец:
+          при выключенном магните измеряется $U_0$, затем снимается
+          зависимость $U_{34}(I_\text{М})$ (6--8 точек). ЭДС Холла
+          вычисляется по \cref{eq:U0}, индукция --- по градуировочной
+          кривой (кусочно-линейная интерполяция).
+    \item При максимальном токе через образец $U_{34}(I_\text{М})$
+          измеряется также при обратном направлении поля (контроль по
+          \cref{eq:reverse}).
+    \item По направлениям тока, поля и знаку ЭДС Холла определяется знак
+          основных носителей.
+    \item Образец вынимается из зазора, при максимальном токе измеряется
+          напряжение $U_{35}$; по \cref{eq:rho} вычисляется $\rho_0$.
+\end{enumerate}
+Угловые коэффициенты прямых $U_\perp(B)$ и $k(I)$ и их случайные
+погрешности находятся методом наименьших квадратов (скрипт
+\filename{scripts/process_data.py}). Погрешность $R_H$ включает также
+погрешность толщины образца и систематическую погрешность градуировки поля
+$\varepsilon_B$:
+\begin{equation}
+    \label{eq:err_RH}
+    \frac{\sigma_{R_H}}{R_H} = \sqrt{\left(\frac{\sigma_K}{K}\right)^2
+        + \left(\frac{\sigma_h}{h}\right)^2 + \varepsilon_B^2},
+    \qquad
+    \frac{\sigma_\mu}{\mu} = \sqrt{\left(\frac{\sigma_{R_H}}{R_H}\right)^2
+        + \left(\frac{\sigma_{\rho}}{\rho_0}\right)^2}.
+\end{equation}
+
+\section{Результаты измерений и обработка данных}
+
+\subsection{Параметры установки}
+\begin{itemize}
+    \item размеры образца: $a = \ParA$~мм, $h = \ParH$~мм,
+          $l = \ParL$~мм;
+    \item пробная катушка милливеберметра: $SN = \ParSN$~см$^2$
+          (если градуировка проводилась тесламетром --- не используется);
+    \item погрешность градуировки поля $\varepsilon_B = \ParEpsB$~\%;
+    \item температура в лаборатории $T = \ParT$~К.
+\end{itemize}
+Все величины записаны в \filename{data/raw/setup_params.csv}.
+
+\subsection{Градуировка электромагнита}
+Результаты градуировки ($\ResCalibN$ точек) приведены в
+\cref{tab:calibration} и на \cref{fig:calibration}. Максимальная индукция
+в зазоре $B_{\max} = \ResBmax$~мТл.
+
+\begin{table}[!ht]
+    \centering
+    \caption{Градуировка электромагнита}
+    \label{tab:calibration}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|},
+            hlines, vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {$I_\text{М}$, А & $B$, мТл \\},
+    ]%
+    {../data/processed/calibration_processed.csv}%
+    {I_M_A=\cIM, B_mT=\cB}%
+    {\cnum{\csvexpval\cIM} & \cnum{\csvexpval\cB}}
+\end{table}
+
+\begin{figure}[!ht]
+    \centering
+    \labimage{calibration.pdf}{0.75}
+    \caption{Градуировочная кривая электромагнита $B(I_\text{М})$}
+    \label{fig:calibration}
+\end{figure}
+
+Зависимость $B(I_\text{М})$ \fillme{} (линейна при малых токах,
+наблюдается ли насыщение сердечника при больших).
+
+\subsection{ЭДС Холла}
+Измеренные значения $U_{34}$ и вычисленные по \cref{eq:U0} значения ЭДС
+Холла приведены в \cref{tab:hall}; начальные напряжения $U_0$ для каждого
+тока --- в \cref{tab:slopes}.
+
+\csvreader[
+    generic collected table = longtblr,
+    generic table options = {[
+            caption = {Зависимость ЭДС Холла от индукции поля при различных
+                       токах через образец},
+            label = {tab:hall},
+        ]{
+            colspec = {|c|c|c|c|c|c|},
+            hlines, vlines,
+            row{1} = {font=\bfseries},
+        }},
+    late after line = \\,
+    table head = {№ & $I$, мА & $I_\text{М}$, А & $B$, мТл & $U_{34}$, мВ
+                  & $U_\perp$, мВ \\},
+]%
+{../data/processed/hall_processed.csv}%
+{series=\cS, I_mA=\cI, I_M_A=\cIM, B_mT=\cB, U34_mV=\cU, U_perp_mV=\cUh}%
+{\csvexpval\cS & \cnum{\csvexpval\cI} & \cnum{\csvexpval\cIM} & \cnum{\csvexpval\cB} & \cnum{\csvexpval\cU} & \cnum{\csvexpval\cUh}}
+
+Семейство зависимостей $U_\perp(B)$ показано на \cref{fig:family}. Все
+зависимости \fillme{} (линейны / проходят через начало координат в пределах
+погрешности). Угловые коэффициенты $k = dU_\perp/dB$, найденные МНК,
+приведены в \cref{tab:slopes}.
+
+\begin{figure}[!ht]
+    \centering
+    \labimage{hall_family.pdf}{0.85}
+    \caption{Зависимость ЭДС Холла $U_\perp$ от индукции $B$ при различных
+             токах $I$ через образец; прямые --- аппроксимация МНК}
+    \label{fig:family}
+\end{figure}
+
+\begin{table}[!ht]
+    \centering
+    \caption{Начальные напряжения и угловые коэффициенты $k = dU_\perp/dB$
+             зависимостей $U_\perp(B)$; $b$ --- свободный член прямой}
+    \label{tab:slopes}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|c|c|c|c|},
+            hlines, vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {№ & $I$, мА & $U_0$, мВ & $k$, мВ/Тл & $\sigma_k$, мВ/Тл
+                      & $b$, мВ & $\sigma_b$, мВ \\},
+    ]%
+    {../data/processed/slopes.csv}%
+    {series=\cS, I_mA=\cI, U0_mV=\cU, k_mV_T=\cK, sigma_k=\cSK,
+     b_mV=\cBb, sigma_b=\cSB}%
+    {\csvexpval\cS & \cnum{\csvexpval\cI} & \cnum{\csvexpval\cU} & \cnum{\csvexpval\cK} & \cnum{\csvexpval\cSK}
+     & \cnum{\csvexpval\cBb} & \cnum{\csvexpval\cSB}}
+\end{table}
+
+\subsection{Постоянная Холла и концентрация носителей}
+Зависимость углового коэффициента $k$ от тока через образец показана на
+\cref{fig:k_vs_I}. Аппроксимация прямой $k = KI + k_0$ даёт
+\begin{equation}
+    K = \ResK~\frac{\text{В}}{\text{Тл}\cdot\text{А}},
+    \qquad k_0 = \ResKb~\text{мВ/Тл}.
+\end{equation}
+Свободный член \fillme{} (в пределах погрешности равен нулю, как и следует
+из \cref{eq:k}).
+
+\begin{figure}[!ht]
+    \centering
+    \labimage{k_vs_I.pdf}{0.75}
+    \caption{Зависимость углового коэффициента $k = dU_\perp/dB$ от тока
+             через образец}
+    \label{fig:k_vs_I}
+\end{figure}
+
+По \cref{eq:RH_from_K,eq:err_RH} постоянная Холла
+\begin{equation}
+    |R_H| = K h = \ResRHabs~\text{м}^3/\text{Кл},
+\end{equation}
+и концентрация основных носителей
+\begin{equation}
+    n = \frac{1}{e|R_H|} = \ResN~\text{м}^{-3}
+      = \ResNcm~\text{см}^{-3}.
+\end{equation}
+
+\subsection{Контроль методом обращения поля}
+При максимальном токе через образец ЭДС Холла измерена также по
+\cref{eq:reverse} (\cref{tab:reverse}, \cref{fig:reverse}). Угловой
+коэффициент
+\begin{equation}
+    k_{\text{обр}} = \ResKrev~\text{мВ/Тл}
+\end{equation}
+\fillme{} (сравнить с $k$ для того же тока из \cref{tab:slopes}).
+Полусумма $\bigl(U_{34}^{(+)} + U_{34}^{(-)}\bigr)/2 = \ResUohm$~мВ
+\fillme{} (сравнить с $U_0$ при том же токе).
+
+\begin{table}[!ht]
+    \centering
+    \caption{Измерение ЭДС Холла с обращением направления поля}
+    \label{tab:reverse}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|c|c|c|},
+            hlines, vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {$I_\text{М}$, А & $|B|$, мТл & $U_{34}^{(+)}$, мВ
+                      & $U_{34}^{(-)}$, мВ & $U_\perp$, мВ & $U_0$, мВ \\},
+    ]%
+    {../data/processed/reverse_processed.csv}%
+    {I_M_A=\cIM, B_mT=\cB, U34_plus_mV=\cUp, U34_minus_mV=\cUm,
+     U_perp_mV=\cUh, U_ohm_mV=\cUo}%
+    {\cnum{\csvexpval\cIM} & \cnum{\csvexpval\cB} & \cnum{\csvexpval\cUp} & \cnum{\csvexpval\cUm} & \cnum{\csvexpval\cUh}
+     & \cnum{\csvexpval\cUo}}
+\end{table}
+
+\begin{figure}[!ht]
+    \centering
+    \labimage{reverse.pdf}{0.75}
+    \caption{Напряжение $U_{34}$ при двух направлениях поля и ЭДС Холла,
+             вычисленная по \cref{eq:reverse}}
+    \label{fig:reverse}
+\end{figure}
+
+\subsection{Тип проводимости}
+Ток через образец течёт от контакта \qq{} к контакту \qq; поле при
+положении 1 разъёма К1 направлено \fillme; потенциал контакта 3 при этом
+\qq{} потенциала контакта 4 ($U_\perp$ \qq~0). Сила Лоренца
+$q\,\vec u\times\vec B$ отклоняет носители к краю \qq, следовательно,
+основные носители заряда --- \fillme{} (электроны / дырки), и образец
+обладает \fillme{} ($n$- / $p$-) типом проводимости; $R_H$ \qq~0.
+
+% Рисунок из тетради: направления тока, поля и отклонения носителей.
+% \begin{figure}[!ht]
+%     \centering
+%     \labimage{carrier_sign.png}{0.6}
+%     \caption{Направления тока, поля и отклонение носителей в образце}
+%     \label{fig:sign}
+% \end{figure}
+
+\subsection{Удельное сопротивление, проводимость и подвижность}
+При удалённом из зазора образце измерено напряжение между контактами 3 и 5
+(\cref{tab:resistivity}).
+
+\begin{table}[!ht]
+    \centering
+    \caption{Измерение удельного сопротивления (без поля)}
+    \label{tab:resistivity}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|},
+            hlines, vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {$I$, мА & $U_{35}$, мВ & $R_{35} = U_{35}/I$, Ом \\},
+    ]%
+    {../data/processed/resistivity_processed.csv}%
+    {I_mA=\cI, U35_mV=\cU, R35_Ohm=\cR}%
+    {\cnum{\csvexpval\cI} & \cnum{\csvexpval\cU} & \cnum{\csvexpval\cR}}
+\end{table}
+
+Сопротивление участка 3--5 $R_{35} = \ResRtf$~Ом. По \cref{eq:rho}
+\begin{equation}
+    \rho_0 = R_{35}\frac{ah}{l} = \ResRho~\text{Ом}\cdot\text{м}
+           = \ResRhoOhmCm~\text{Ом}\cdot\text{см},
+    \qquad
+    \sigma_0 = \frac{1}{\rho_0} = \ResSigma~\text{См/м}.
+\end{equation}
+Подвижность носителей по \cref{eq:mu}:
+\begin{equation}
+    \mu = \sigma_0|R_H| = \ResMu~\frac{\text{см}^2}{\text{В}\cdot\text{с}}.
+\end{equation}
+
+\subsection{Оценка кинетических характеристик носителей}
+Принимая эффективную массу носителей $m = \ParMeff\,m_e$ и
+$T = \ParT$~К, получаем:
+\begin{itemize}
+    \item частота столкновений $\nu = e/(m\mu) = \ResNu$~с$^{-1}$
+          (время свободного пробега $\tau = 1/\nu$);
+    \item средняя тепловая скорость $\bar v \approx \sqrt{3k_BT/m} = \ResVT$~м/с;
+    \item длина свободного пробега $\lambda = \bar v/\nu = \ResLambda$~нм;
+    \item коэффициент диффузии (\cref{eq:einstein})
+          $D = \mu k_BT/e = \ResD$~см$^2$/с.
+\end{itemize}
+Оценки носят порядковый характер: эффективные массы носителей в германии
+отличаются от $m_e$ (для электронов $m^*\approx0{,}12\,m_e$, для дырок
+$m^*\approx0{,}3\,m_e$ --- в усреднённом по направлениям смысле),
+соответственно $\nu$ возрастает, а $\lambda$ уменьшается в
+$\sqrt{m_e/m^*}$ раз.
+
+\section{Обсуждение результатов}
+\begin{itemize}
+    \item Зависимости $U_\perp(B)$ при всех токах \fillme{} (линейны), что
+          подтверждает \cref{eq:hall}; наклоны $k$ пропорциональны току
+          через образец (\cref{fig:k_vs_I}).
+    \item Постоянная Холла $|R_H| = \ResRHabs$~м$^3$/Кл, концентрация
+          носителей $n = \ResNcm$~см$^{-3}$. Для сравнения, собственная
+          концентрация носителей в германии при комнатной температуре
+          $n_i\approx2{,}4\cdot10^{13}$~см$^{-3}$; полученное значение
+          \fillme{} (во сколько раз больше), что подтверждает примесный
+          характер проводимости.
+    \item Тип проводимости --- \fillme.
+    \item Подвижность $\mu = \ResMu$~см$^2$/(В$\cdot$с). Табличные
+          значения для чистого германия при $300$~К: для электронов
+          $\approx3900$, для дырок $\approx1900$~см$^2$/(В$\cdot$с).
+          \fillme{} (сравнить с табличным значением для найденного типа
+          носителей; в легированном образце подвижность может быть ниже
+          из-за рассеяния на ионизированных примесях).
+    \item Метод обращения поля даёт $k_{\text{обр}} = \ResKrev$~мВ/Тл,
+          \fillme{} (согласуется / не согласуется с основным методом).
+    \item Основные источники погрешности: \fillme{} (градуировка поля
+          $\varepsilon_B$, точность размеров образца, дрейф $U_0$ из-за
+          нагрева образца током, неоднородность поля в зазоре).
+\end{itemize}
+
+\section{Заключение}
+В работе исследован эффект Холла в образце легированного германия:
+\begin{itemize}
+    \item проведена градуировка электромагнита, максимальное поле в зазоре
+          $B_{\max} = \ResBmax$~мТл;
+    \item подтверждена линейная зависимость ЭДС Холла от индукции поля и
+          тока через образец;
+    \item определена постоянная Холла $|R_H| = \ResRHabs$~м$^3$/Кл и тип
+          проводимости образца --- \fillme;
+    \item найдена концентрация основных носителей
+          $n = \ResN$~м$^{-3}$;
+    \item измерены удельное сопротивление
+          $\rho_0 = \ResRho$~Ом$\cdot$м и проводимость
+          $\sigma_0 = \ResSigma$~См/м;
+    \item вычислена подвижность носителей
+          $\mu = \ResMu$~см$^2$/(В$\cdot$с) и оценены длина свободного
+          пробега $\lambda \sim \ResLambda$~нм и коэффициент диффузии
+          $D \sim \ResD$~см$^2$/с.
+\end{itemize}
+
+\end{document}
