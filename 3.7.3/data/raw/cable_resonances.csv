@@ -1,0 +1,31 @@
+# Часть I: резонансные частоты кабеля (сигналы в начале и в конце линии совпадают по фазе).
+# signal -- sine (синусоида) или pulse (прямоугольные импульсы)
+# load   -- matched (нагрузка 50 Ом) или open (1 МОм, разомкнутый конец)
+# n      -- порядковый номер резонанса (1, 2, 3, ... подряд, без пропусков;
+#           если какой-то резонанс пропущен -- просто перескочить номер)
+# nu_MHz -- частота генератора, МГц
+signal,load,n,nu_MHz
+sine,matched,1,3.94
+sine,matched,2,7.90
+sine,matched,3,11.90
+sine,matched,4,15.90
+sine,matched,5,19.90
+sine,matched,6,23.91
+sine,matched,7,27.88
+sine,open,1,4.0
+sine,open,2,7.9
+sine,open,3,11.8
+sine,open,4,15.8
+sine,open,5,19.9
+sine,open,6,24.0
+sine,open,7,27.9
+pulse,matched,1,4
+pulse,matched,2,8
+pulse,matched,3,12
+pulse,matched,4,16
+pulse,matched,5,20
+pulse,open,1,4
+pulse,open,2,8
+pulse,open,3,12
+pulse,open,4,16
+pulse,open,5,20

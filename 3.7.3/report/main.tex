@@ -1,0 +1,934 @@
+\documentclass[a4paper,12pt]{article}
+
+% ===========================================================================
+%  Лабораторная работа 3.7.3 «Длинные линии»
+%
+%  Сборка:  cd 3.7.3/report && pdflatex main.tex  (дважды, или latexmk -pdf)
+%  Таблицы, графики и числа читаются из ../data/processed/,
+%  которые готовит ../scripts/process_data.py.
+%
+%  До измерений отчёт собирается: таблицы пустые, на месте чисел -- «???»,
+%  на месте осциллограмм -- рамки-заглушки с именем ожидаемого файла.
+% ===========================================================================
+
+\input{../../common/latex_template/preamble.tex}
+
+% Пакеты, нужные именно этой работе
+\usepackage{subcaption}
+\usepackage{circuitikz}
+
+% --- Служебные макросы ------------------------------------------------------
+% Короткий пропуск (число/слово, которое надо вписать после измерений)
+\newcommand{\qq}{\textbf{???}}
+% Пропуск, требующий осмысленного текста
+\newcommand{\fillme}{\textbf{?? НЕОБХОДИМО ЗАПОЛНИТЬ ??}}
+% Имя файла моноширинным шрифтом
+\newcommand{\filename}[1]{\texttt{\detokenize{#1}}}
+% Скриншот из report/img/; если файла ещё нет -- рамка-заглушка.
+\newcommand{\labimage}[2]{%
+    \IfFileExists{img/#1}{%
+        \includegraphics[width=#2\linewidth]{img/#1}%
+    }{%
+        \fbox{\parbox[c][0.6\dimexpr#2\linewidth\relax][c]{%
+                \dimexpr#2\linewidth-2\fboxsep-2\fboxrule\relax}{%
+            \centering\small\filename{img/#1}\\[2mm]\fillme}}%
+    }%
+}
+% Итоговые числа из ../data/processed/results.tex: $\res{Vph}$.
+% Если обработка ещё не запускалась -- «???».
+\InputIfFileExists{../data/processed/results.tex}{}{}
+\makeatletter
+\newcommand{\res}[1]{%
+    \ifcsname res@#1\endcsname\csname res@#1\endcsname\else\qq\fi}
+\makeatother
+
+% Колонтитулы (как в остальных работах репозитория)
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{%
+    \IfFileExists{../../common/latex_template/miptlogo.png}{%
+        \includegraphics[height=1cm]{../../common/latex_template/miptlogo.png}%
+    }{%
+        \textbf{[ЛОГОТИП МФТИ]}%
+    }%
+}
+\fancyhead[R]{\textbf{Емельянов ДА}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{33pt}
+
+% Общий стиль графиков
+\pgfplotsset{
+    labplot/.style={
+        width=0.8\textwidth,
+        height=0.5\textwidth,
+        grid=both,
+        minor tick num=1,
+        legend cell align=left,
+        legend style={font=\small},
+        scaled ticks=false,
+        unbounded coords=jump,
+        tick label style={/pgf/number format/use comma},
+    },
+}
+
+\begin{document}
+
+% --- ТИТУЛЬНЫЙ ЛИСТ ---
+\begin{titlepage}
+\begin{center}
+    {\large МОСКОВСКИЙ ФИЗИКО-ТЕХНИЧЕСКИЙ ИНСТИТУТ}
+\end{center}
+\begin{center}
+    {\large Физтех-школа физики и исследований им. Ландау\break ЛФИ}
+\end{center}
+
+    \vspace{3cm}
+
+\vspace{0.15cm}
+{
+\begin{center}
+    \huge \bf Лабораторная работа №3.7.3 по курсу Общая физика\\
+    \vspace{0.4cm}
+    \LARGE Длинные линии.
+\end{center}
+}
+\vspace{1.5cm}
+\begin{flushright}
+Емельянов Дмитрий Алексеевич\\
+\vspace{0.4cm}
+Б02-502
+\end{flushright}
+\vspace{10cm}
+\begin{center}
+    \large 06 октября 2026, г. Долгопрудный
+\end{center}
+\end{titlepage}
+% ----------------------
+
+\section{Аннотация}
+
+\textbf{Цель работы:} ознакомиться и проверить на практике теорию
+распространения электрических сигналов вдоль длинной линии; измерить
+амплитудно- и фазово-частотные характеристики коаксиальной линии; определить
+погонные характеристики такой линии; на примере модели длинной линии изучить
+распределение амплитуды колебаний сигнала по длине линии.
+
+\textbf{Оборудование:} осциллограф АКТАКОМ ADS-6142H; генератор АКИП~3420/1;
+бухта с коаксиальным кабелем РК~50-4-11; схемный блок <<модель длинной
+линии>>; магазин сопротивлений Р33; соединительные провода.
+
+В работе по резонансным частотам, при которых сигналы в начале и в конце
+кабеля совпадают по фазе, оцениваются фазовая и групповая скорости
+распространения сигнала. Сняты АЧХ и ФЧХ кабеля длиной $l\approx50$~м в
+диапазоне $1\div40$~МГц; по ним определены погонные индуктивность и ёмкость,
+диэлектрическая и магнитная проницаемости заполнения кабеля, а по
+частотной зависимости затухания (скин-эффект) "--- удельная проводимость
+материала жилы. На LC-цепочке, моделирующей длинную линию, измерены
+дисперсионная зависимость $\Delta\varphi(\nu)$, резонансные частоты при
+короткозамкнутом и разомкнутом выходе и распределение амплитуды вдоль
+цепочки.
+
+\section{Теоретические сведения}
+
+Все формулы ниже записаны в СИ (в методичке "--- в СГС; переход
+осуществляется заменами $L_x/c^2\to L'$, $C_x\to C'$, $\varepsilon\to
+4\pi\varepsilon_0\varepsilon$, $\mu\to\mu_0\mu/4\pi$). Штрихом обозначены
+погонные (на единицу длины) величины.
+
+\subsection{Погонные параметры коаксиального кабеля}
+Кабель "--- центральная жила диаметра $d = 2r_1$ внутри проводящей оболочки
+внутреннего диаметра $D = 2r_2$; пространство между ними заполнено средой
+с проницаемостями $\varepsilon$, $\mu$. Погонные индуктивность и ёмкость:
+\begin{equation}
+    \label{eq:LC}
+    L' = \frac{\mu_0\mu}{2\pi}\ln\frac{D}{d},
+    \qquad
+    C' = \frac{2\pi\varepsilon_0\varepsilon}{\ln(D/d)}.
+\end{equation}
+Погонное сопротивление проводников $R' = 1/(\sigma S)$, где $\sigma$ "---
+удельная проводимость, $S$ "--- площадь сечения, по которому течёт ток.
+
+\subsection{Телеграфные уравнения}
+Для элемента $dx$ линии падение напряжения складывается из ЭДС
+самоиндукции и омического падения, а изменение тока связано с зарядкой
+погонной ёмкости:
+\begin{equation}
+    \label{eq:telegraph}
+    \frac{\partial U}{\partial x} = -L'\frac{\partial I}{\partial t} - R'I,
+    \qquad
+    \frac{\partial I}{\partial x} = -C'\frac{\partial U}{\partial t}.
+\end{equation}
+Исключая ток, получаем волновое уравнение с затуханием:
+\begin{equation}
+    \label{eq:wave}
+    \frac{\partial^2 U}{\partial t^2}
+    - V_\text{ф}^2\frac{\partial^2 U}{\partial x^2}
+    + \gamma\frac{\partial U}{\partial t} = 0,
+    \qquad
+    V_\text{ф} = \frac{1}{\sqrt{L'C'}} = \frac{c}{\sqrt{\varepsilon\mu}},
+    \qquad
+    \gamma = R'C'V_\text{ф}^2 = \frac{R'}{L'}.
+\end{equation}
+
+\subsection{Бегущая волна, затухание и волновое сопротивление}
+Решение ищем в виде $U = U_0 e^{-i\omega t}e^{(ik-\alpha)x}$. Подстановка
+в~\eqref{eq:wave} даёт дисперсионное соотношение
+\begin{equation}
+    \label{eq:dispersion}
+    \omega^2 = V_\text{ф}^2\left(k^2-\alpha^2\right),
+    \qquad
+    2\alpha k V_\text{ф}^2 = \omega\gamma
+    \;\;\Longleftrightarrow\;\;
+    2\alpha k = \omega R'C'.
+\end{equation}
+При малом затухании ($\alpha\ll k$)
+\begin{equation}
+    \label{eq:alpha_k}
+    k = \frac{\omega}{V_\text{ф}},
+    \qquad
+    \alpha = \frac{R'C'V_\text{ф}}{2} = \frac{R'}{2R_0},
+\end{equation}
+где $R_0$ "--- волновое сопротивление (отношение $U/I$ в бегущей волне):
+\begin{equation}
+    \label{eq:R0}
+    R_0 = \sqrt{\frac{L'}{C'}}.
+\end{equation}
+Если линия нагружена на $R = R_0$, бегущая волна <<не замечает>> конца
+линии и отражения нет. При $R\ne R_0$ (в частности, при $R\to\infty$ и
+$R = 0$) возникает отражённая волна, и в линии устанавливается
+(частично) стоячая волна.
+
+Для согласованной линии длины $l$ амплитуда на нагрузке и набег фазы равны
+\begin{equation}
+    \label{eq:Un_dphi}
+    U_\text{н} = U_0 e^{-\alpha l},
+    \qquad
+    \Delta\varphi = kl,
+\end{equation}
+откуда по измеренным амплитудам и сдвигу фаз
+\begin{equation}
+    \label{eq:alpha_k_exp}
+    \alpha(\omega) = \frac{1}{l}\ln\frac{U_0}{U_\text{н}},
+    \qquad
+    k(\omega) = \frac{\Delta\varphi}{l}.
+\end{equation}
+Осциллограф позволяет измерить лишь сдвиг $\Delta x < T$ между
+максимумами сигналов, т.\,е. часть фазы, меньшую $2\pi$. Поскольку
+$\Delta\varphi(\omega)$ монотонно растёт, полный набег фазы
+\begin{equation}
+    \label{eq:phase_unwrap}
+    \Delta\varphi = 2\pi\left(\nu\,\Delta x + m\right),
+\end{equation}
+где целое $m$ "--- число целых периодов, уложившихся во время
+распространения (для $l\approx50$~м $m$ увеличивается на единицу примерно
+каждые 4~МГц).
+
+\subsection{Резонансный метод измерения скоростей}
+Сигналы в начале и в конце согласованной линии совпадают по фазе, когда
+набег фазы кратен $2\pi$: $kl = 2\pi n$, т.\,е.
+\begin{equation}
+    \label{eq:res_matched}
+    \nu_n = n\,\frac{V_\text{ф}}{l}
+    \quad\Longrightarrow\quad
+    V_\text{ф} = l\,\Delta\nu,
+\end{equation}
+где $\Delta\nu = \nu_{n+1}-\nu_n$ "--- шаг между соседними резонансами.
+Постоянство шага означает отсутствие дисперсии в исследуемом диапазоне.
+Для разомкнутого конца в линии образуется стоячая волна, и резонансы
+соответствуют укладыванию на длине линии целого числа полуволн,
+$l = n\lambda/2$, т.\,е. $V_\text{ф} = 2l\,\Delta\nu$.
+
+Для последовательности прямоугольных импульсов совпадение импульсов в
+начале и в конце линии наступает, когда время распространения кратно
+периоду повторения: $l/V_\text{гр} = nT = n/\nu_n$, поэтому
+$V_\text{гр} = l\,\Delta\nu$. Здесь измеряется скорость переноса
+огибающей "--- групповая скорость $V_\text{гр} = d\omega/dk$; в отсутствие
+дисперсии $V_\text{гр} = V_\text{ф}$.
+
+\subsection{Определение $L'$, $C'$, $\varepsilon$, $\mu$}
+Первое из уравнений~\eqref{eq:dispersion} перепишем как линейную
+зависимость
+\begin{equation}
+    \label{eq:y1}
+    y_1 = L'C'\,x_1,
+    \qquad
+    x_1 = \omega^2,
+    \quad
+    y_1 = k^2(\omega)-\alpha^2(\omega).
+\end{equation}
+Наклон прямой даёт $L'C'$, а с учётом~\eqref{eq:R0} при известном
+$R_0$
+\begin{equation}
+    \label{eq:LC_from_slope}
+    L' = R_0\sqrt{L'C'},
+    \qquad
+    C' = \frac{\sqrt{L'C'}}{R_0},
+    \qquad
+    \varepsilon\mu = c^2 L'C'.
+\end{equation}
+Затем из~\eqref{eq:LC} по известным $d$ и $D$ находятся $\varepsilon$ и
+$\mu$ материала, заполняющего кабель.
+
+\subsection{Скин-эффект и проводимость проводников}
+Толщина скин-слоя
+\begin{equation}
+    \label{eq:skin}
+    \delta = \frac{1}{\sqrt{\pi\nu\mu_0\sigma}}
+\end{equation}
+для меди уже при $\nu = 1$~МГц составляет $\approx65$~мкм, что примерно в
+десять раз меньше радиуса жилы ($d = 1{,}37$~мм). Считая, что ток течёт в
+приповерхностном слое жилы, и вычисляя джоулевы потери, получаем
+погонное сопротивление
+\begin{equation}
+    \label{eq:Rx_skin}
+    R' = \frac{2}{\sigma\pi d\,\delta}
+       = \frac{2}{d}\sqrt{\frac{\mu_0\nu}{\pi\sigma}}.
+\end{equation}
+
+\paragraph{Метод А.} Подставляя~\eqref{eq:Rx_skin}
+в~\eqref{eq:alpha_k}:
+\begin{equation}
+    \label{eq:methodA}
+    y_2 = \alpha(\omega) = s_2\,x_2,
+    \quad x_2 = \sqrt{\nu},
+    \qquad
+    s_2 = \frac{1}{dR_0}\sqrt{\frac{\mu_0}{\pi\sigma}}
+    \;\;\Longrightarrow\;\;
+    \sigma = \frac{\mu_0}{\pi\left(s_2\,d\,R_0\right)^2}.
+\end{equation}
+
+\paragraph{Метод Б.} Из второго уравнения~\eqref{eq:dispersion}
+$\alpha k = \omega R'C'/2$, т.\,е.
+\begin{equation}
+    \label{eq:methodB}
+    y_3 = \alpha(\omega)\,k(\omega) = s_3\,x_3,
+    \quad x_3 = \nu^{3/2},
+    \qquad
+    s_3 = \frac{2\pi C'}{d}\sqrt{\frac{\mu_0}{\pi\sigma}}
+    \;\;\Longrightarrow\;\;
+    \sigma = \frac{\mu_0}{\pi}\left(\frac{2\pi C'}{d\,s_3}\right)^2.
+\end{equation}
+Метод Б не требует знания $R_0$ и использует как АЧХ, так и ФЧХ.
+
+\subsection{Модель длинной линии}
+Модель "--- цепочка из $N = 10$ звеньев с индуктивностью $L$ и ёмкостью
+$C$ (\cref{fig:model_scheme}). Для волны $U_n\propto e^{i(\omega t-n\theta)}$
+(где $\theta$ "--- сдвиг фаз на одно звено) из законов Кирхгофа
+получается дисперсионное соотношение
+\begin{equation}
+    \label{eq:chain_dispersion}
+    \sin\frac{\theta}{2} = \frac{\omega\sqrt{LC}}{2} = \frac{\nu}{\nu_0},
+    \qquad
+    \nu_0 = \frac{1}{\pi\sqrt{LC}}.
+\end{equation}
+При $\nu\ll\nu_0$ $\theta\approx2\pi\nu\sqrt{LC}$, что
+соответствует~\eqref{eq:Un_dphi} для непрерывной линии с $L' = L/a$,
+$C' = C/a$ на звено длиной $a$. С ростом частоты зависимость $\theta(\nu)$
+становится нелинейной (дисперсия), а при $\nu>\nu_0$ волна по цепочке не
+распространяется: $\nu_0$ "--- предельная частота. Согласованная нагрузка
+при $\nu\ll\nu_0$
+\begin{equation}
+    \label{eq:R0_model}
+    R_0 = \sqrt{\frac{L}{C}}.
+\end{equation}
+
+\paragraph{Резонансы модели.} При $R = 0$ или $R\to\infty$ волна
+полностью отражается от выхода и в цепочке устанавливается стоячая волна.
+Выходное сопротивление генератора (50~Ом) много меньше $R_0$, поэтому для
+стоячей волны вход можно считать закороченным. Тогда условие резонанса
+\begin{equation}
+    \label{eq:model_res}
+    R = 0:\;\; N\theta_m = m\pi,
+    \qquad
+    R\to\infty:\;\; N\theta_m = \left(m-\tfrac12\right)\pi,
+    \qquad
+    \nu_m = \nu_0\sin\frac{\theta_m}{2}.
+\end{equation}
+Распределение амплитуды вдоль цепочки на $m$-м резонансе имеет вид
+$|U_n|\propto|\sin(n\theta_m)|$ (вход "--- узел тока) или
+$|\cos(\ldots)|$; число пучностей растёт с номером резонанса.
+
+\section{Экспериментальная установка}
+
+\subsection{Коаксиальный кабель}
+Один конец кабеля через тройник подключён к выходу генератора и к входу
+CH1 осциллографа (тройник "--- непосредственно на входе осциллографа,
+чтобы фазовый сдвиг между входом осциллографа и началом линии был
+минимален), второй конец "--- ко входу CH2 (\cref{fig:setup_cable}).
+Входное сопротивление канала CH2 (50~Ом или 1~МОм) играет роль нагрузки
+линии: 50~Ом "--- согласованная нагрузка, 1~МОм "--- разомкнутый конец.
+
+\begin{figure}[!ht]
+    \centering
+    \labimage{setup_cable.png}{0.7}
+    \caption{Схема установки для наблюдения распространения сигналов вдоль
+             коаксиального кабеля}
+    \label{fig:setup_cable}
+\end{figure}
+
+\subsection{Модель длинной линии}
+Цепочка из 10 катушек $L = 1{,}5$~мГн и конденсаторов $C = 47$~нФ
+(крайние конденсаторы $C_1 = C/2 = 23{,}5$~нФ). Сигнал генератора подаётся
+на вход, к выходу подключается магазин сопротивлений Р33; CH1 "--- вход
+цепочки, CH2 "--- любая из клемм $0\ldots10$ (\cref{fig:model_scheme}).
+
+\begin{figure}[!ht]
+    \centering
+    \begin{circuitikz}[scale=0.9, transform shape]
+        \draw (0,0) to[sV, l=Г] (0,2.5);
+        \draw (0,2.5) -- (1,2.5);
+        \draw (1,2.5) to[C, l_=$C/2$] (1,0);
+        \draw (1,2.5) to[L, l=$L$] (3.5,2.5);
+        \draw (3.5,2.5) to[C, l_=$C$] (3.5,0);
+        \draw (3.5,2.5) to[L, l=$L$] (6,2.5);
+        \draw (6,2.5) to[C, l_=$C$] (6,0);
+        \draw (6,2.5) -- (6.6,2.5);
+        \node at (7.25,2.5) {$\cdots$};
+        \node at (7.25,0) {$\cdots$};
+        \draw (7.9,2.5) to[L, l=$L$] (10,2.5);
+        \draw (10,2.5) to[C, l_=$C/2$] (10,0);
+        \draw (10,2.5) -- (11.5,2.5) to[R, l=$R_\text{н}$] (11.5,0);
+        \draw (0,0) -- (6.6,0);
+        \draw (7.9,0) -- (11.5,0);
+        \node[above] at (1,2.6) {0};
+        \node[above] at (3.5,2.6) {1};
+        \node[above] at (6,2.6) {2};
+        \node[above] at (10,2.6) {10};
+    \end{circuitikz}
+    \caption{Модель длинной линии: 10 звеньев $L = 1{,}5$~мГн,
+             $C = 47$~нФ, нагрузка "--- магазин сопротивлений $R_\text{н}$.
+             Цифрами обозначены номера клемм}
+    \label{fig:model_scheme}
+\end{figure}
+
+\subsection{Параметры установки}
+
+\begin{table}[!ht]
+    \centering
+    \caption{Параметры установки (из \filename{data/raw/setup_params.csv})}
+    \label{tab:setup}
+    \begin{tblr}{colspec={|l|c|c|}, hlines, vlines, row{1}={font=\bfseries}}
+        Величина & Обозначение & Значение \\
+        Длина кабеля & $l$ & \qq~м \\
+        Волновое сопротивление кабеля (номинал) & $R_0$ & 50~Ом \\
+        Диаметр центральной жилы & $d$ & 1,37~мм \\
+        Внутренний диаметр оплётки & $D$ & 4,6~мм \\
+        Индуктивность звена модели & $L$ & 1,5~мГн \\
+        Ёмкость звена модели & $C$ & 47~нФ \\
+        Число звеньев & $N$ & 10 \\
+    \end{tblr}
+\end{table}
+
+\section{Ход работы и результаты}
+
+\subsection{Качественные наблюдения}
+На генераторе устанавливался синусоидальный сигнал амплитудой 4~В
+(смещение 0, фаза $0^\circ$, нагрузка 50~Ом), затем последовательность
+прямоугольных импульсов (амплитуда 4~В, смещение 2~В, длительность
+10~нс, фронт 4~нс). Частота менялась в пределах $1\div30$~МГц, при
+согласованной (50~Ом) и разомкнутой (1~МОм) нагрузке.
+
+\fillme: что наблюдается при изменении частоты (как меняются сдвиг фаз и
+амплитуда сигнала на конце линии; чем отличаются согласованная и
+разомкнутая линия; как искажаются импульсы, видны ли отражённые импульсы).
+
+\begin{figure}[!ht]
+    \centering
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \labimage{osc_sine_matched.png}{1}
+        \caption{синусоида, 50~Ом}
+    \end{subfigure}\hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \labimage{osc_sine_open.png}{1}
+        \caption{синусоида, 1~МОм}
+    \end{subfigure}
+
+    \vspace{3mm}
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \labimage{osc_pulse_matched.png}{1}
+        \caption{импульсы, 50~Ом}
+    \end{subfigure}\hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \labimage{osc_pulse_open.png}{1}
+        \caption{импульсы, 1~МОм}
+    \end{subfigure}
+    \caption{Характерные осциллограммы сигналов в начале (CH1) и в конце
+             (CH2) кабеля}
+    \label{fig:osc_qual}
+\end{figure}
+
+\subsection{Фазовая и групповая скорости}
+Измеренные резонансные частоты (сигналы в начале и в конце линии
+совпадают по фазе) приведены в \cref{tab:cable_res}, зависимость $\nu_n(n)$
+"--- на \cref{fig:cable_res}. Шаг $\Delta\nu$ найден МНК как наклон прямой
+$\nu_n = \Delta\nu\cdot n + b$.
+
+% Таблица резонансов одной серии: #1 -- файл, #2 -- подпись
+\newcommand{\restable}[2]{%
+    \begin{minipage}[t]{0.24\textwidth}
+        \centering\small #2\\[1mm]
+        \csvreader[
+            tabularray = {colspec={|c|c|}, hlines, vlines,
+                          row{1}={font=\bfseries}},
+            table head = {$n$ & $\nu_n$, МГц \\},
+        ]{../data/processed/#1}{n=\csvN, nu_MHz=\csvNu}{$\csvN$ & $\csvNu$}
+    \end{minipage}%
+}
+
+\begin{table}[!ht]
+    \centering
+    \caption{Резонансные частоты коаксиального кабеля}
+    \label{tab:cable_res}
+    \restable{cable_res_sine_matched.csv}{синус, 50~Ом}\hfill
+    \restable{cable_res_sine_open.csv}{синус, 1~МОм}\hfill
+    \restable{cable_res_pulse_matched.csv}{импульсы, 50~Ом}\hfill
+    \restable{cable_res_pulse_open.csv}{импульсы, 1~МОм}
+\end{table}
+
+\begin{figure}[!ht]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            labplot,
+            xlabel={$n$},
+            ylabel={$\nu_n$, МГц},
+            xmin=0, ymin=0,
+            legend pos=north west,
+        ]
+            \addplot[only marks, mark=*]
+                table[col sep=comma, x=n, y=nu_MHz]
+                {../data/processed/cable_res_sine_matched.csv};
+            \addlegendentry{синус, 50~Ом}
+            \addplot[only marks, mark=o]
+                table[col sep=comma, x=n, y=nu_MHz]
+                {../data/processed/cable_res_sine_open.csv};
+            \addlegendentry{синус, 1~МОм}
+            \addplot[only marks, mark=square*]
+                table[col sep=comma, x=n, y=nu_MHz]
+                {../data/processed/cable_res_pulse_matched.csv};
+            \addlegendentry{импульсы, 50~Ом}
+            \addplot[only marks, mark=triangle]
+                table[col sep=comma, x=n, y=nu_MHz]
+                {../data/processed/cable_res_pulse_open.csv};
+            \addlegendentry{импульсы, 1~МОм}
+
+            \addplot[thin, no marks, forget plot]
+                table[col sep=comma, x=n, y=nu_fit_MHz]
+                {../data/processed/cable_res_sine_matched.csv};
+            \addplot[thin, dashed, no marks, forget plot]
+                table[col sep=comma, x=n, y=nu_fit_MHz]
+                {../data/processed/cable_res_sine_open.csv};
+            \addplot[thin, no marks, forget plot]
+                table[col sep=comma, x=n, y=nu_fit_MHz]
+                {../data/processed/cable_res_pulse_matched.csv};
+            \addplot[thin, dashed, no marks, forget plot]
+                table[col sep=comma, x=n, y=nu_fit_MHz]
+                {../data/processed/cable_res_pulse_open.csv};
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Резонансные частоты кабеля в зависимости от номера резонанса;
+             линии "--- аппроксимация МНК}
+    \label{fig:cable_res}
+\end{figure}
+
+Результаты (\cref{eq:res_matched}, $l = \qq$~м):
+
+\begin{table}[!ht]
+    \centering
+    \caption{Скорости распространения сигнала в кабеле}
+    \label{tab:velocities}
+    \begin{tblr}{colspec={|l|c|c|c|}, hlines, vlines, row{1}={font=\bfseries}}
+        Серия & $\Delta\nu$, МГц & $V$, м/с & $V/c$ \\
+        синус, 50~Ом ($V_\text{ф}$) & $\res{dnuSineMatched}$ & $\res{VSineMatched}$ & $\res{VratioSineMatched}$ \\
+        синус, 1~МОм ($V_\text{ф}$) & $\res{dnuSineOpen}$ & $\res{VSineOpen}$ & $\res{VratioSineOpen}$ \\
+        импульсы, 50~Ом ($V_\text{гр}$) & $\res{dnuPulseMatched}$ & $\res{VPulseMatched}$ & $\res{VratioPulseMatched}$ \\
+        импульсы, 1~МОм ($V_\text{гр}$) & $\res{dnuPulseOpen}$ & $\res{VPulseOpen}$ & $\res{VratioPulseOpen}$ \\
+    \end{tblr}
+\end{table}
+
+\fillme: линейна ли зависимость $\nu_n(n)$ (есть ли дисперсия); совпадают
+ли $V_\text{ф}$ и $V_\text{гр}$; сравнение с $c/\sqrt{\varepsilon}$ для
+полиэтилена ($\varepsilon\approx2{,}25$, $V\approx2{,}0\cdot10^8$~м/с).
+
+\subsection{АЧХ и ФЧХ кабеля}
+При согласованной нагрузке (50~Ом) и амплитуде синусоиды 1~В (при
+необходимости до 8~В) с помощью курсоров измерялись амплитуды $U_0$,
+$U_\text{н}$ сигналов в начале и в конце линии и сдвиг $\Delta x$ между их
+максимумами. Полный набег фазы рассчитан по~\eqref{eq:phase_unwrap},
+$\alpha$ и $k$ "--- по~\eqref{eq:alpha_k_exp}. Результаты "--- в
+\cref{tab:afc}, АЧХ и ФЧХ "--- на \cref{fig:afc}.
+
+\begin{table}[!ht]
+    \centering
+    \small
+    \caption{АЧХ и ФЧХ коаксиального кабеля ($K = U_\text{н}/U_0$,
+             $V_\text{ф} = \omega/k$)}
+    \label{tab:afc}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|c|c|c|c|c|c|c|},
+            hlines, vlines,
+            row{1} = {font=\bfseries},
+        },
+        table head = {
+            $\nu$, МГц & $U_0$, В & $U_\text{н}$, В & $\Delta x$, нс & $m$
+            & $K$ & $\Delta\varphi$, рад & $\alpha$, м$^{-1}$
+            & $k$, м$^{-1}$ & $V_\text{ф}$, $10^8$~м/с \\
+        },
+    ]{../data/processed/afc_table.csv}%
+    {nu_MHz=\cNu, U0_V=\cUo, Un_V=\cUn, dx_ns=\cDx, m=\cM, Kamp=\cK,
+     dphi_rad=\cPhi, alpha_m=\cAl, k_m=\cKw, Vph_1e8=\cV}%
+    {$\cNu$ & $\cUo$ & $\cUn$ & $\cDx$ & $\cM$ & $\cK$ & $\cPhi$ & $\cAl$
+     & $\cKw$ & $\cV$}
+\end{table}
+
+\begin{figure}[!ht]
+    \centering
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \begin{axis}[labplot, width=\linewidth, height=0.8\linewidth,
+                         xlabel={$\nu$, МГц}, ylabel={$K = U_\text{н}/U_0$},
+                         xmin=0, ymin=0]
+                \addplot[mark=*, mark size=1.5pt]
+                    table[col sep=comma, x=nu_MHz, y=Kamp]
+                    {../data/processed/afc_processed.csv};
+            \end{axis}
+        \end{tikzpicture}
+        \caption{АЧХ}
+    \end{subfigure}\hfill
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \begin{axis}[labplot, width=\linewidth, height=0.8\linewidth,
+                         xlabel={$\nu$, МГц}, ylabel={$\Delta\varphi$, рад},
+                         xmin=0, ymin=0]
+                \addplot[mark=*, mark size=1.5pt]
+                    table[col sep=comma, x=nu_MHz, y=dphi_rad]
+                    {../data/processed/afc_processed.csv};
+            \end{axis}
+        \end{tikzpicture}
+        \caption{ФЧХ}
+    \end{subfigure}
+    \caption{Амплитудно- и фазово-частотная характеристики кабеля}
+    \label{fig:afc}
+\end{figure}
+
+\fillme: вид АЧХ и ФЧХ; линейна ли ФЧХ (постоянна ли $V_\text{ф}$ в
+\cref{tab:afc}).
+
+\subsection{Погонные параметры кабеля}
+Зависимость $y_1(x_1)$~\eqref{eq:y1} показана на \cref{fig:y1}.
+
+\begin{figure}[!ht]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            labplot,
+            xlabel={$x_1 = \omega^2$, $10^{15}$~рад$^2$/с$^2$},
+            ylabel={$y_1 = k^2-\alpha^2$, м$^{-2}$},
+            xmin=0, ymin=0,
+            legend pos=north west,
+        ]
+            \addplot[only marks, mark=*]
+                table[col sep=comma, x=x1, y=y1]
+                {../data/processed/afc_processed.csv};
+            \addlegendentry{эксперимент}
+            \addplot[thin, no marks]
+                table[col sep=comma, x=x1, y=y1_fit]
+                {../data/processed/afc_processed.csv};
+            \addlegendentry{МНК}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Зависимость $k^2-\alpha^2$ от $\omega^2$}
+    \label{fig:y1}
+\end{figure}
+
+По наклону прямой и~\eqref{eq:LC_from_slope}, \eqref{eq:LC}
+($R_0 = 50$~Ом, $\ln(D/d) = 1{,}21$):
+\begin{gather*}
+    L'C' = \res{LCprod}~\text{с}^2/\text{м}^2,
+    \\
+    V_\text{ф} = \res{Vph}~\text{м/с} = \res{Vphratio}\,c,
+    \\
+    L' = \res{Lx}~\text{Гн/м},
+    \qquad
+    C' = \res{Cx}~\text{Ф/м},
+    \\
+    \varepsilon = \res{eps},
+    \qquad
+    \mu = \res{mu},
+    \qquad
+    \varepsilon\mu = \res{epsmu}.
+\end{gather*}
+
+\fillme: сравнение с номинальными значениями для РК~50-4-11
+($C'_\text{ном}\approx100$~пФ/м, $L'$ при $\mu = 1$:
+$\res{LxNom}$~Гн/м; полиэтилен $\varepsilon = 2{,}25$, $\mu = 1$).
+
+\subsection{Удельная проводимость материала жилы}
+
+\begin{figure}[!ht]
+    \centering
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \begin{axis}[labplot, width=\linewidth, height=0.8\linewidth,
+                         xlabel={$\sqrt{\nu}$, $10^3$~Гц$^{1/2}$},
+                         ylabel={$\alpha$, $10^{-3}$~м$^{-1}$},
+                         xmin=0, ymin=0]
+                \addplot[only marks, mark=*, mark size=1.5pt]
+                    table[col sep=comma, x=x2, y=y2]
+                    {../data/processed/afc_processed.csv};
+                \addplot[thin, no marks]
+                    table[col sep=comma, x=x2, y=y2_fit]
+                    {../data/processed/afc_processed.csv};
+            \end{axis}
+        \end{tikzpicture}
+        \caption{метод А: $\alpha(\sqrt{\nu})$}
+    \end{subfigure}\hfill
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \begin{axis}[labplot, width=\linewidth, height=0.8\linewidth,
+                         xlabel={$\nu^{3/2}$, $10^9$~Гц$^{3/2}$},
+                         ylabel={$\alpha k$, $10^{-3}$~м$^{-2}$},
+                         xmin=0, ymin=0]
+                \addplot[only marks, mark=*, mark size=1.5pt]
+                    table[col sep=comma, x=x3, y=y3]
+                    {../data/processed/afc_processed.csv};
+                \addplot[thin, no marks]
+                    table[col sep=comma, x=x3, y=y3_fit]
+                    {../data/processed/afc_processed.csv};
+            \end{axis}
+        \end{tikzpicture}
+        \caption{метод Б: $\alpha k(\nu^{3/2})$}
+    \end{subfigure}
+    \caption{Определение удельной проводимости жилы}
+    \label{fig:sigma}
+\end{figure}
+
+По наклонам прямых (\cref{fig:sigma}) и формулам~\eqref{eq:methodA},
+\eqref{eq:methodB}:
+\begin{gather*}
+    s_2 = \res{sTwo}~\text{м}^{-1}\text{Гц}^{-1/2},
+    \\
+    \sigma_\text{А} = \res{sigmaA}~\text{См/м}
+    = \res{sigmaAratio}\,\sigma_\text{Cu},
+    \\
+    s_3 = \res{sThree}~\text{м}^{-2}\text{Гц}^{-3/2},
+    \\
+    \sigma_\text{Б} = \res{sigmaB}~\text{См/м}
+    = \res{sigmaBratio}\,\sigma_\text{Cu},
+\end{gather*}
+где $\sigma_\text{Cu} = 5{,}96\cdot10^7$~См/м "--- табличное значение для
+меди. Свободный член прямой метода А: $\res{bTwo}$~м$^{-1}$.
+
+\fillme: сравнение методов и с табличным значением; возможные причины
+расхождения (потери в оплётке и диэлектрике, неточность согласования,
+отражения на разъёмах).
+
+\subsection{Модель длинной линии}
+
+\paragraph{Предварительные оценки.} По~\eqref{eq:chain_dispersion}
+и~\eqref{eq:R0_model} для $L = 1{,}5$~мГн, $C = 47$~нФ:
+$\nu_0 = \res{nuZero}$~кГц, $R_0 = \res{RZeroModel}$~Ом. Согласованная
+нагрузка, при которой амплитуда на всех клеммах одинакова, подобрана на
+магазине: $R_\text{согл} = \res{RMatchModel}$~Ом.
+
+\paragraph{Дисперсия.} Сдвиг фаз между соседними ячейками
+(\cref{tab:model_phase}, \cref{fig:model_phase}) сравнивается с
+зависимостью~\eqref{eq:chain_dispersion} для цепочки и с линейной
+зависимостью $\theta = 2\pi\nu\sqrt{LC}$ для непрерывной линии.
+
+\begin{table}[!ht]
+    \centering
+    \caption{Сдвиг фаз между соседними ячейками модели}
+    \label{tab:model_phase}
+    \csvreader[
+        tabularray = {colspec={|c|c|c|c|c|}, hlines, vlines,
+                      row{1}={font=\bfseries}},
+        table head = {$\nu$, кГц & $\Delta t$, мкс & $\Delta\varphi$, рад
+                      & $\theta_\text{цеп}$, рад & $\theta_\text{непр}$, рад \\},
+    ]{../data/processed/model_phase_table.csv}%
+    {nu_kHz=\cNu, dt_us=\cDt, dphi_rad=\cPhi, dphi_chain=\cTh,
+     dphi_cont=\cTc}%
+    {$\cNu$ & $\cDt$ & $\cPhi$ & $\cTh$ & $\cTc$}
+\end{table}
+
+\begin{figure}[!ht]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            labplot,
+            xlabel={$\nu$, кГц},
+            ylabel={$\Delta\varphi$, рад},
+            xmin=0, ymin=0, ymax=3.5,
+            legend pos=north west,
+        ]
+            \addplot[only marks, mark=*]
+                table[col sep=comma, x=nu_kHz, y=dphi_rad]
+                {../data/processed/model_phase_processed.csv};
+            \addlegendentry{эксперимент}
+            \addplot[thick, no marks]
+                table[col sep=comma, x=nu_kHz, y=dphi_chain]
+                {../data/processed/model_phase_theory.csv};
+            \addlegendentry{$2\arcsin(\nu/\nu_0)$}
+            \addplot[thin, dashed, no marks]
+                table[col sep=comma, x=nu_kHz, y=dphi_cont]
+                {../data/processed/model_phase_theory.csv};
+            \addlegendentry{$2\pi\nu\sqrt{LC}$}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Сдвиг фаз на одно звено модели в зависимости от частоты}
+    \label{fig:model_phase}
+\end{figure}
+
+\fillme: согласие с теорией, проявление дисперсии вблизи $\nu_0$.
+
+\paragraph{Резонансы.} Резонансные частоты в диапазоне от 2~кГц до
+$\nu_0$ при замкнутом и разомкнутом выходе приведены в
+\cref{tab:model_res} вместе с оценкой~\eqref{eq:model_res}.
+
+% #1 -- файл, #2 -- подпись
+\newcommand{\modelrestable}[2]{%
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering\small #2\\[1mm]
+        \csvreader[
+            tabularray = {colspec={|c|c|c|c|}, hlines, vlines,
+                          row{1}={font=\bfseries}},
+            table head = {$m$ & $\nu^\text{эксп}$, кГц & $\nu^\text{теор}$, кГц
+                          & $\varepsilon$, \% \\},
+        ]{../data/processed/#1}%
+        {n=\cN, nu_exp_kHz=\cE, nu_theor_kHz=\cT, dev_percent=\cD}%
+        {$\cN$ & $\cE$ & $\cT$ & $\cD$}
+    \end{minipage}%
+}
+
+\begin{table}[!ht]
+    \centering
+    \caption{Резонансные частоты модели длинной линии}
+    \label{tab:model_res}
+    \modelrestable{model_res_short.csv}{$R = 0$}\hfill
+    \modelrestable{model_res_open.csv}{$R\to\infty$}
+\end{table}
+
+\fillme: согласие с оценкой; какие резонансы не удалось наблюдать и
+почему.
+
+\paragraph{Распределение амплитуды вдоль цепочки.} Для 3--4 наименьших
+резонансных частот ($\nu_1 = \res{nuDistOne}$, $\nu_2 = \res{nuDistTwo}$,
+$\nu_3 = \res{nuDistThree}$, $\nu_4 = \res{nuDistFour}$~кГц; нагрузка
+\qq) измерена амплитуда на каждой клемме (\cref{fig:model_dist}).
+
+\begin{figure}[!ht]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            labplot,
+            xlabel={номер клеммы $n$},
+            ylabel={$U$, мВ},
+            xmin=0, xmax=10, ymin=0,
+            xtick={0,...,10},
+            legend pos=outer north east,
+        ]
+            \addplot[mark=*] table[col sep=comma, x=cell, y=U1_mV]
+                {../data/processed/model_distribution_processed.csv};
+            \addlegendentry{$\nu_1$}
+            \addplot[mark=o, dashed] table[col sep=comma, x=cell, y=U2_mV]
+                {../data/processed/model_distribution_processed.csv};
+            \addlegendentry{$\nu_2$}
+            \addplot[mark=square*] table[col sep=comma, x=cell, y=U3_mV]
+                {../data/processed/model_distribution_processed.csv};
+            \addlegendentry{$\nu_3$}
+            \addplot[mark=triangle, dashed] table[col sep=comma, x=cell, y=U4_mV]
+                {../data/processed/model_distribution_processed.csv};
+            \addlegendentry{$\nu_4$}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Распределение амплитуды напряжения вдоль цепочки на
+             резонансных частотах}
+    \label{fig:model_dist}
+\end{figure}
+
+\fillme: число пучностей и узлов для каждого резонанса, сравнение со
+стоячей волной.
+
+\paragraph{Резонансные кривые (необязательный пункт).} Зависимость
+напряжения на первой клемме от частоты вблизи резонансов показана на
+\cref{fig:model_curves}, добротность $Q = \nu_\text{р}/\Delta\nu$ (по
+ширине на уровне $1/\sqrt2$) "--- в \cref{tab:model_q}.
+
+\begin{figure}[!ht]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            labplot,
+            xlabel={$\nu$, кГц},
+            ylabel={$U/U_\text{max}$},
+            ymin=0, ymax=1.05,
+            extra y ticks={0.7071},
+            extra y tick labels={$1/\sqrt2$},
+            extra y tick style={grid=major, grid style={thick, dashed}},
+            legend pos=outer north east,
+        ]
+            \addplot[mark=*, mark size=1.5pt] table[col sep=comma, x=nu_kHz, y=U_norm]
+                {../data/processed/model_res_curve_1.csv};
+            \addlegendentry{серия 1}
+            \addplot[mark=o, mark size=1.5pt] table[col sep=comma, x=nu_kHz, y=U_norm]
+                {../data/processed/model_res_curve_2.csv};
+            \addlegendentry{серия 2}
+            \addplot[mark=square*, mark size=1.5pt] table[col sep=comma, x=nu_kHz, y=U_norm]
+                {../data/processed/model_res_curve_3.csv};
+            \addlegendentry{серия 3}
+            \addplot[mark=triangle, mark size=1.5pt] table[col sep=comma, x=nu_kHz, y=U_norm]
+                {../data/processed/model_res_curve_4.csv};
+            \addlegendentry{серия 4}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Резонансные кривые модели длинной линии}
+    \label{fig:model_curves}
+\end{figure}
+
+\begin{table}[!ht]
+    \centering
+    \caption{Добротность резонансов модели}
+    \label{tab:model_q}
+    \csvreader[
+        tabularray = {colspec={|c|c|c|c|}, hlines, vlines,
+                      row{1}={font=\bfseries}},
+        table head = {Серия & $\nu_\text{р}$, кГц & $\Delta\nu$, кГц & $Q$ \\},
+    ]{../data/processed/model_q.csv}%
+    {series=\cS, nu_res_kHz=\cF, dnu_kHz=\cW, Q=\cQ}%
+    {$\cS$ & $\cF$ & $\cW$ & $\cQ$}
+\end{table}
+
+\section{Обсуждение результатов}
+\fillme
+
+\section{Выводы}
+\begin{enumerate}
+    \item Резонансным методом измерены фазовая скорость
+          $V_\text{ф} = \res{VSineMatched}$~м/с и групповая скорость
+          $V_\text{гр} = \res{VPulseMatched}$~м/с распространения сигнала в
+          кабеле; дисперсия в диапазоне $1\div30$~МГц \qq.
+    \item По АЧХ и ФЧХ кабеля определены погонные параметры
+          $L' = \res{Lx}$~Гн/м, $C' = \res{Cx}$~Ф/м и проницаемости
+          заполнения $\varepsilon = \res{eps}$, $\mu = \res{mu}$.
+    \item По частотной зависимости затухания определена удельная
+          проводимость жилы: $\sigma_\text{А} = \res{sigmaA}$~См/м,
+          $\sigma_\text{Б} = \res{sigmaB}$~См/м (\fillme: сравнение с
+          медью).
+    \item Для модели длинной линии предельная частота
+          $\nu_0 = \res{nuZero}$~кГц, согласованная нагрузка
+          $R_\text{согл} = \res{RMatchModel}$~Ом
+          (теория $\res{RZeroModel}$~Ом); дисперсионная зависимость
+          \fillme; резонансные частоты и распределения амплитуды \fillme.
+\end{enumerate}
+
+\end{document}
