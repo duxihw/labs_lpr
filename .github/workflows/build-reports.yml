@@ -1,0 +1,110 @@
+# Автоматическая сборка PDF-отчётов.
+#
+# При пуше в main пересобираются только те работы (папки x.x.x), в которых
+# что-то изменилось; при изменении common/ или .github/ -- все работы.
+# Для каждой работы запускается scripts/process_data.py (если есть) и
+# компилируется report/main.tex -> report/<номер>.pdf. Результат (PDF и
+# пересчитанные data/processed/) коммитится обратно в main.
+#
+# Вручную: вкладка Actions -> «Сборка отчётов» -> Run workflow
+# (можно указать папки через пробел; пусто -- все работы).
+
+name: Сборка отчётов
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '[0-9]*.[0-9]*.[0-9]*/**'
+      - 'common/**'
+      - '.github/**'
+  workflow_dispatch:
+    inputs:
+      labs:
+        description: 'Папки через пробел, например «3.4.5 3.6.1» (пусто -- все)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-reports
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Какие работы собирать
+        id: labs
+        env:
+          INPUT_LABS: ${{ github.event.inputs.labs }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          all=$(ls -d [0-9]*.[0-9]*.[0-9]* | tr '\n' ' ')
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            labs="${INPUT_LABS:-$all}"
+          elif [ -z "$BEFORE" ] || ! git cat-file -e "$BEFORE" 2>/dev/null; then
+            labs="$all"
+          else
+            changed=$(git diff --name-only "$BEFORE" "$GITHUB_SHA")
+            if echo "$changed" | grep -qE '^(common|\.github)/'; then
+              labs="$all"
+            else
+              # изменения только в PDF не требуют пересборки
+              labs=$(echo "$changed" | grep -vE '\.pdf$' \
+                     | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+/' | tr -d / | sort -u | tr '\n' ' ')
+            fi
+          fi
+          echo "Собираем: ${labs:-ничего}"
+          echo "labs=$labs" >> "$GITHUB_OUTPUT"
+
+      - name: Установка TeX Live
+        if: steps.labs.outputs.labs != ''
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends \
+            latexmk texlive-latex-base texlive-latex-recommended texlive-latex-extra \
+            texlive-lang-cyrillic texlive-pictures texlive-science \
+            texlive-fonts-recommended lmodern cm-super
+
+      - uses: actions/setup-python@v5
+        if: steps.labs.outputs.labs != ''
+        with:
+          python-version: '3.12'
+
+      - name: Установка Python-пакетов
+        if: steps.labs.outputs.labs != ''
+        run: pip install numpy pandas matplotlib scipy
+
+      - name: Сборка
+        id: build
+        if: steps.labs.outputs.labs != ''
+        run: bash .github/scripts/build_reports.sh ${{ steps.labs.outputs.labs }}
+
+      - name: Коммит PDF
+        # коммитим даже если часть работ не собралась -- остальные PDF не теряются
+        if: always() && steps.labs.outputs.labs != ''
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898237+github-actions[bot]@users.noreply.github.com"
+          for lab in ${{ steps.labs.outputs.labs }}; do
+            for d in "$lab/report" "$lab/data/processed"; do
+              [ -d "$d" ] && git add -A "$d"
+            done
+          done
+          if git diff --cached --quiet; then
+            echo "Изменений нет."
+            exit 0
+          fi
+          git commit -m "Сборка отчётов: ${{ steps.labs.outputs.labs }}[skip ci]"
+          for i in 1 2 3; do
+            git pull --rebase -q origin main && git push origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1
