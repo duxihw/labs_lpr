@@ -47,6 +47,7 @@ SIGMA_CU = 5.96e7         # См/м, табличная проводимость
 
 RES = Results()
 TEX: dict[str, str] = {}   # имя макроса -> LaTeX-строка (без $)
+NUM: dict[str, str] = {}   # имя -> «голое» число для формул pgfplots
 
 
 def header(title: str) -> None:
@@ -82,6 +83,8 @@ def put(name: str, value: float, sigma: float = np.nan, power: int = 0,
     """Запоминает результат и в fit_results.csv, и в results.tex."""
     RES.add(name, value, sigma, unit, comment)
     TEX[name] = tex_pm(value, sigma, power)
+    if value is not None and np.isfinite(value):
+        NUM[name] = f"{value:.6g}"
 
 
 def save_tex() -> None:
@@ -90,6 +93,9 @@ def save_tex() -> None:
              "% Макрос \\res{имя} выдаёт число (в математическом режиме)."]
     for name, text in TEX.items():
         lines.append(f"\\expandafter\\def\\csname res@{name}\\endcsname{{{text}}}")
+    lines.append("% Макрос \\resnum{имя} -- число без оформления (для pgfplots).")
+    for name, text in NUM.items():
+        lines.append(f"\\expandafter\\def\\csname resnum@{name}\\endcsname{{{text}}}")
     (PROC_DIR / "results.tex").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"  -> data/processed/results.tex ({len(TEX)} макросов)")
 
@@ -112,15 +118,12 @@ def round_sig(x, n: int = 4) -> list[str]:
 # Часть I. Фазовая и групповая скорость по резонансам кабеля
 # --------------------------------------------------------------------------
 # Множитель p в  V = p * l * Δν,  где Δν -- шаг между соседними резонансами.
-#   согласованная линия: совпадение при  l/V = n/ν           -> p = 1;
-#   синусоида, конец разомкнут: стоячая волна, резонансы через полволны
-#   (l = n*λ/2)                                            -> p = 2;
-#   импульсы, конец разомкнут: на CH2 приходит тот же импульс с задержкой l/V
-#                                                          -> p = 1.
-# ПРОВЕРИТЬ по наблюдениям и при необходимости поменять.
+# Во всех режимах совпадение сигналов в начале и в конце линии наступает,
+# когда время пробега l/V кратно периоду: l/V = n/ν  -> p = 1.
+# (Опыт это подтверждает: при 50 Ом и 1 МОм резонансы синусоиды совпадают.)
 P_FACTOR = {
     ("sine", "matched"): 1,
-    ("sine", "open"): 2,
+    ("sine", "open"): 1,
     ("pulse", "matched"): 1,
     ("pulse", "open"): 1,
 }
@@ -135,7 +138,7 @@ SERIES_NAMES = {
 def process_cable_resonances(l_m: float) -> None:
     header("I. Резонансы коаксиального кабеля -> V_ф, V_гр")
     raw = read_raw("cable_resonances.csv")
-    cols = ["n", "nu_MHz", "nu_fit_MHz"]
+    cols = ["n", "nu_MHz", "nu_fit_MHz", "resid_kHz", "nu_per_n"]
     for (signal, load), tag in SERIES_NAMES.items():
         if raw.empty:
             df = pd.DataFrame(columns=cols)
@@ -149,9 +152,17 @@ def process_cable_resonances(l_m: float) -> None:
         k, sk, b, sb = lsq(df["n"], df["nu_MHz"]) if len(df) else (np.nan,) * 4
         df = df.copy()
         df["nu_fit_MHz"] = k * df["n"] + b if np.isfinite(k) else np.nan
+        df["resid_kHz"] = (df["nu_MHz"] - df["nu_fit_MHz"]) * 1e3
+        df["nu_per_n"] = df["nu_MHz"] / df["n"]
         write_processed(df, f"cable_res_{signal}_{load}.csv", cols)
 
         p = P_FACTOR[(signal, load)]
+        if not (np.isfinite(sk) and sk > 0):
+            # точки легли точно на прямую (частоты записаны с шагом 1 МГц) --
+            # берём погрешность по разрешению записи частоты: 0,05 МГц на
+            # весь диапазон резонансов
+            nmax = df["n"].max() if len(df) else np.nan
+            sk = 0.05 / (nmax - 1) if np.isfinite(nmax) and nmax > 1 else np.nan
         V, sV = p * l_m * k * 1e6, p * l_m * sk * 1e6
         put(f"dnu{tag}", k, sk, 0, "MHz", f"шаг резонансов, {signal}/{load}")
         put(f"V{tag}", V, sV, 8, "m/s", f"скорость (p = {p}), {signal}/{load}")
@@ -275,13 +286,23 @@ def process_model(params: dict) -> None:
     put("RMatchModel", get_param(params, "R_match_model", np.nan), np.nan, 0, "Ohm",
         "согласованная нагрузка, подобранная на опыте")
 
-    # --- п.3: сдвиг фаз между соседними ячейками ---
-    cols = ["nu_kHz", "dt_us", "dphi_rad", "dphi_chain", "dphi_cont"]
+    # --- п.3: сдвиг фаз в цепочке ---
+    # Сдвиг dt измерялся между клеммами, разделёнными K звеньями
+    # (K = links_phase в setup_params.csv; на низких частотах dt -> K*sqrt(LC)).
+    # Осциллограф показывает лишь dt < T, поэтому к nu*dt добавляется целое
+    # число периодов m (столбец m в model_phase.csv), подобранное так, чтобы
+    # Δφ(ν) росла монотонно и непрерывно.
+    K = int(get_param(params, "links_phase", 1))
+    put("linksPhase", K, np.nan, 0, "", "число звеньев между клеммами при измерении сдвига фаз")
+    put("dtLow", K * np.sqrt(L * C) * 1e6, np.nan, 0, "us", "K*sqrt(LC) -- предел dt при nu -> 0")
+    cols = ["nu_kHz", "dt_us", "m", "dphi_tot", "dphi_rad", "dphi_chain", "dphi_cont"]
     df = read_raw("model_phase.csv")
     if not df.empty:
         df = df.astype(float).sort_values("nu_kHz")
         nu = df["nu_kHz"] * 1e3
-        df["dphi_rad"] = 2 * np.pi * nu * df["dt_us"] * 1e-6
+        df["m"] = df["m"].fillna(0).astype(int) if "m" in df else 0
+        df["dphi_tot"] = 2 * np.pi * (nu * df["dt_us"] * 1e-6 + df["m"])
+        df["dphi_rad"] = df["dphi_tot"] / K
         df["dphi_chain"] = 2 * np.arcsin(np.clip(nu / nu0, 0, 1))
         df["dphi_cont"] = 2 * np.pi * nu * np.sqrt(L * C)
     write_processed(df, "model_phase_processed.csv", cols)
@@ -295,7 +316,7 @@ def process_model(params: dict) -> None:
     })
     write_processed(theory, "model_phase_theory.csv")
     tab = df.copy()
-    for c in cols[2:]:
+    for c in cols[3:]:
         if c in tab:
             tab[c] = round_sig(tab[c], 4)
     write_processed(tab, "model_phase_table.csv", cols, na_rep="")
@@ -306,72 +327,51 @@ def process_model(params: dict) -> None:
     #   nu = nu_0 * sin(theta/2),
     #   выход замкнут (R = 0):    N*theta = m*pi           (m = 1 .. N-1)
     #   выход разомкнут (R = inf): N*theta = (m - 1/2)*pi   (m = 1 .. N)
+    # В таблицы отчёта попадают только измеренные резонансы.
     raw = read_raw("model_resonances.csv")
     rows = []
-    for load in ["short", "open"]:
-        mmax = N - 1 if load == "short" else N
-        for mm in range(1, mmax + 1):
+    if not raw.empty:
+        for _, r in raw.iterrows():
+            load, mm, exp = str(r["load"]).strip(), int(r["n"]), float(r["nu_kHz"])
             theta = (mm if load == "short" else mm - 0.5) * np.pi / N
-            exp = np.nan
-            if not raw.empty:
-                sel = raw[(raw["load"].astype(str).str.strip() == load)
-                          & (raw["n"].astype(float) == mm)]
-                if len(sel):
-                    exp = float(sel["nu_kHz"].iloc[0])
             th = nu0 * np.sin(theta / 2) / 1e3
-            rows.append({"load": load, "n": mm,
-                         "nu_exp_kHz": exp,
+            rows.append({"load": load, "n": mm, "nu_exp_kHz": exp,
                          "nu_theor_kHz": round(th, 2),
-                         "dev_percent": round((exp - th) / th * 100, 1)
-                         if np.isfinite(exp) else np.nan})
-    res = pd.DataFrame(rows)
-    write_processed(res[res["load"] == "short"].drop(columns="load"),
-                    "model_res_short.csv", na_rep="--")
-    write_processed(res[res["load"] == "open"].drop(columns="load"),
-                    "model_res_open.csv", na_rep="--")
+                         "dev_percent": round((exp - th) / th * 100, 0)})
+    res = pd.DataFrame(rows, columns=["load", "n", "nu_exp_kHz", "nu_theor_kHz", "dev_percent"])
+    rcols = ["n", "nu_exp_kHz", "nu_theor_kHz", "dev_percent"]
+    for load in ["short", "open"]:
+        part = res[res["load"] == load].sort_values("n")[rcols]
+        part["dev_percent"] = part["dev_percent"].map(lambda v: f"{v:+.0f}")
+        write_processed(part, f"model_res_{load}.csv", rcols)
 
     # --- п.5: распределение амплитуды по ячейкам ---
-    cols = ["cell", "U1_mV", "U2_mV", "U3_mV", "U4_mV"]
+    # Теория для m-го резонанса (вход -- узел): U_n ∝ |sin(n*theta_m)|,
+    # нормировка на максимум измеренных значений серии.
     dist = read_raw("model_distribution.csv")
+    cols = ["cell"]
+    if not dist.empty:
+        dist = dist.astype(float).sort_values("cell")
+        dist["cell"] = dist["cell"].astype(int)
+        cells = dist["cell"].to_numpy()
+        for i, (load, mm) in DIST_SERIES.items():
+            col = f"U{i}_mV"
+            if col not in dist or dist[col].isna().all():
+                continue
+            theta = (mm if load == "short" else mm - 0.5) * np.pi / N
+            shape = np.abs(np.sin(cells * theta))
+            dist[f"U{i}_th"] = (dist[col].max() * shape / shape.max()).round(1)
+            cols += [col, f"U{i}_th"]
+            name = ["", "One", "Two", "Three", "Four"][i]
+            put(f"nuDist{name}", get_param(params, f"nu_dist_{i}", np.nan), np.nan, 0,
+                "kHz", f"частота серии {i} распределения U(n) ({load}, m = {mm})")
     write_processed(dist, "model_distribution_processed.csv", cols)
-    for i in range(1, 5):
-        put(f"nuDist{['', 'One', 'Two', 'Three', 'Four'][i]}",
-            get_param(params, f"nu_dist_{i}", np.nan), np.nan, 0, "kHz",
-            f"частота серии {i} распределения U(n)")
 
-    # --- п.6*: резонансные кривые, добротность ---
-    curves = read_raw("model_res_curves.csv")
-    qrows = []
-    cols = ["series", "nu_kHz", "U_mV", "U_norm"]
-    if not curves.empty:
-        curves = curves.astype(float).sort_values(["series", "nu_kHz"])
-        curves["U_norm"] = curves.groupby("series")["U_mV"].transform(lambda u: u / u.max())
-        for s, g in curves.groupby("series"):
-            f, u = g["nu_kHz"].to_numpy(), g["U_norm"].to_numpy()
-            i0 = int(np.argmax(u))
-            lvl = 1 / np.sqrt(2)
-            left = right = np.nan
-            for j in range(i0, 0, -1):
-                if u[j - 1] < lvl <= u[j]:
-                    left = np.interp(lvl, [u[j - 1], u[j]], [f[j - 1], f[j]])
-                    break
-            for j in range(i0, len(u) - 1):
-                if u[j + 1] < lvl <= u[j]:
-                    right = np.interp(lvl, [u[j + 1], u[j]], [f[j + 1], f[j]])
-                    break
-            width = right - left
-            q = f[i0] / width if np.isfinite(width) and width > 0 else np.nan
-            qrows.append({"series": int(s), "nu_res_kHz": round(f[i0], 3),
-                          "dnu_kHz": round(width, 3) if np.isfinite(width) else np.nan,
-                          "Q": round(q, 1) if np.isfinite(q) else np.nan})
-            print(f"    серия {int(s)}: nu_р = {f[i0]} кГц, Δν = {width:.3g} кГц, Q = {q:.3g}")
-    for s in range(1, 5):   # файлы нужны всегда -- на них ссылается отчёт
-        g = curves[curves["series"] == s].copy() if not curves.empty else pd.DataFrame()
-        if not g.empty:
-            g["series"] = g["series"].astype(int)
-        write_processed(g, f"model_res_curve_{s}.csv", cols)
-    write_processed(pd.DataFrame(qrows), "model_q.csv",
-                    ["series", "nu_res_kHz", "dnu_kHz", "Q"], na_rep="--")
+
+# Режим и номер резонанса для серий распределения U(n) (п.5):
+#   серия 1 -- 4,9 кГц: выход замкнут, первый резонанс;
+#   серия 2 -- 2,1 кГц: выход разомкнут, первый резонанс.
+DIST_SERIES = {1: ("short", 1), 2: ("open", 1)}
 
 
 def main() -> None:

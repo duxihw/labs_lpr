@@ -3,14 +3,14 @@ dnuSineMatched,3.994286,0.002748,MHz,"шаг резонансов, sine/matched"
 VSineMatched,199714285.714286,137395.600472,m/s,"скорость (p = 1), sine/matched"
 VratioSineMatched,0.666175,0.000458,,"V/c, sine/matched"
 dnuSineOpen,4.0,0.016903,MHz,"шаг резонансов, sine/open"
-VSineOpen,400000000.0,1690308.509468,m/s,"скорость (p = 2), sine/open"
-VratioSineOpen,1.334256,0.005638,,"V/c, sine/open"
-dnuPulseMatched,4.0,0.0,MHz,"шаг резонансов, pulse/matched"
-VPulseMatched,200000000.0,0.0,m/s,"скорость (p = 1), pulse/matched"
-VratioPulseMatched,0.667128,0.0,,"V/c, pulse/matched"
-dnuPulseOpen,4.0,0.0,MHz,"шаг резонансов, pulse/open"
-VPulseOpen,200000000.0,0.0,m/s,"скорость (p = 1), pulse/open"
-VratioPulseOpen,0.667128,0.0,,"V/c, pulse/open"
+VSineOpen,200000000.0,845154.254734,m/s,"скорость (p = 1), sine/open"
+VratioSineOpen,0.667128,0.002819,,"V/c, sine/open"
+dnuPulseMatched,4.0,0.0125,MHz,"шаг резонансов, pulse/matched"
+VPulseMatched,200000000.0,625000.0,m/s,"скорость (p = 1), pulse/matched"
+VratioPulseMatched,0.667128,0.002085,,"V/c, pulse/matched"
+dnuPulseOpen,4.0,0.0125,MHz,"шаг резонансов, pulse/open"
+VPulseOpen,200000000.0,625000.0,m/s,"скорость (p = 1), pulse/open"
+VratioPulseOpen,0.667128,0.002085,,"V/c, pulse/open"
 LCprod,0.0,0.0,s^2/m^2,L'C' (наклон y1(x1))
 b1,0.000666,0.000619,1/m^2,свободный член y1(x1)
 Vph,199246546.189354,90613.758159,m/s,V_ф = 1/sqrt(L'C')
@@ -31,7 +31,7 @@ sigmaBratio,1.027469,0.024391,,sigma_B / sigma_Cu
 nuZero,37.910156,nan,kHz,предельная частота nu_0 = 1/(pi sqrt(LC))
 RZeroModel,178.6474,nan,Ohm,согласованная нагрузка sqrt(L/C)
 RMatchModel,178.7,nan,Ohm,"согласованная нагрузка, подобранная на опыте"
-nuDistOne,4.9,nan,kHz,частота серии 1 распределения U(n)
-nuDistTwo,2.1,nan,kHz,частота серии 2 распределения U(n)
-nuDistThree,nan,nan,kHz,частота серии 3 распределения U(n)
-nuDistFour,nan,nan,kHz,частота серии 4 распределения U(n)
+linksPhase,5.0,nan,,число звеньев между клеммами при измерении сдвига фаз
+dtLow,41.982139,nan,us,K*sqrt(LC) -- предел dt при nu -> 0
+nuDistOne,4.9,nan,kHz,"частота серии 1 распределения U(n) (short, m = 1)"
+nuDistTwo,2.1,nan,kHz,"частота серии 2 распределения U(n) (open, m = 1)"

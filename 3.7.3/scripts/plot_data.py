@@ -87,7 +87,7 @@ def main() -> None:
     dist = load("model_distribution_processed.csv")
     fig, ax = plt.subplots()
     for i in range(1, 5):
-        if not dist.empty and dist[f"U{i}_mV"].notna().any():
+        if f"U{i}_mV" in dist and dist[f"U{i}_mV"].notna().any():
             ax.plot(dist["cell"], dist[f"U{i}_mV"], "o-", label=f"серия {i}")
     ax.set(xlabel="номер клеммы", ylabel="$U$, мВ")
     if ax.get_legend_handles_labels()[0]:
