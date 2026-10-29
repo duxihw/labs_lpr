@@ -196,10 +196,14 @@ def tex_num(value: float, sigma: float | None = None, sig: int = 3) -> str:
     if value is None or not np.isfinite(value):
         return r"\textbf{???}"
     no_sigma = sigma is None or not np.isfinite(sigma) or sigma <= 0
-    if no_sigma and value != 0 and abs(value) >= 1e4:
+    if value != 0 and abs(value) >= 1e4:
         exp = int(np.floor(np.log10(abs(value))))
-        mant, _ = _round_by_sigma(float(value) / 10**exp, None, sig)
-        return f"{mant.replace('.', '{,}')} \\cdot 10^{{{exp}}}"
+        if no_sigma:
+            mant, _ = _round_by_sigma(float(value) / 10**exp, None, sig)
+            return f"{mant.replace('.', '{,}')} \\cdot 10^{{{exp}}}"
+        mant, smant = _round_by_sigma(float(value) / 10**exp, sigma / 10**exp, sig)
+        return (f"({mant.replace('.', '{,}')} \\pm {smant.replace('.', '{,}')})"
+                f" \\cdot 10^{{{exp}}}")
     v, s = _round_by_sigma(float(value), sigma, sig)
     v = v.replace(".", "{,}")
     if s is None:
