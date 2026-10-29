@@ -14,6 +14,7 @@
 
 \usepackage{subcaption}
 \usepackage{circuitikz}
+\usepackage{float}
 
 % Числа на осях: десятичная запятая, без разделителя тысяч
 \pgfplotsset{/pgf/number format/.cd, use comma, 1000 sep={}}
@@ -83,26 +84,25 @@
 \end{flushright}
 \vspace{10cm}
 \begin{center}
-    \large \qq\ октября 2026, г. Долгопрудный
+    \large 20 октября 2026, г. Долгопрудный
 \end{center}
 \end{titlepage}
 % ----------------------
 
 \section{Аннотация}
 В работе с помощью электронного осциллографа в режиме $X$--$Y$ исследуются
-петли гистерезиса нескольких тороидальных ферромагнитных образцов в
-переменном поле частоты $\nu_0 = 50$~Гц. Сигнал, пропорциональный
-напряжённости поля $H$, снимается с резистора в цепи намагничивающей
-обмотки, а сигнал, пропорциональный индукции $B$, --- с интегрирующей
-$RC$-цепочки, подключённой к измерительной обмотке.
+петли гистерезиса трёх тороидальных ферромагнитных образцов (кремнистое
+железо, феррит, пермаллой) в переменном поле частоты $\nu_0 = 50$~Гц.
+Сигнал, пропорциональный напряжённости поля $H$, снимается с резистора в
+цепи намагничивающей обмотки, а сигнал, пропорциональный индукции $B$, ---
+с интегрирующей $RC$-цепочки, подключённой к измерительной обмотке.
 
-Для каждого образца по предельной петле определяются коэрцитивное поле
-$H_c$, остаточная индукция $B_r$, индукция насыщения $B_s$ и
-соответствующая ей амплитуда поля $H_s$; по вершинам частных петель
-строится начальная кривая намагничивания и оцениваются начальная и
-максимальная дифференциальная магнитные проницаемости. Проводятся
-калибровка каналов осциллографа и измерение постоянной времени
-интегрирующей цепочки.
+Для каждого образца по предельной петле определены коэрцитивное поле
+$H_c$, остаточная индукция $B_r$ и индукция $B_s$ при максимальном поле;
+по вершинам частных петель построены начальные кривые намагничивания и
+оценены начальная и максимальная дифференциальная магнитные
+проницаемости. Проведены калибровка каналов осциллографа и измерение
+постоянной времени интегрирующей цепочки.
 
 \section{Теоретические сведения}
 
@@ -275,14 +275,16 @@ $I \approx U_\vx / R_{\text{и}}$ и
 \begin{itemize}
     \item трансформаторный блок: регулировочный автотрансформатор и
           разделительный понижающий трансформатор (сеть 220~В, 50~Гц);
-    \item тороидальные образцы с намагничивающей ($N_0$) и измерительной
-          ($N_{\text{и}}$) обмотками: \fillme;
+    \item три тороидальных образца с намагничивающей ($N_0$) и
+          измерительной ($N_{\text{и}}$) обмотками: кремнистое
+          (трансформаторное) железо, феррит, пермаллой;
     \item резистор $R_0 = \res{R0}$~Ом в цепи намагничивающей обмотки;
     \item интегрирующая $RC$-цепочка: $R_{\text{и}} = \res{Rint}$~кОм,
-          $C_{\text{и}} = \res{Cint}$~мкФ;
-    \item амперметр $A$ (действующее значение тока): \fillme;
+          $C_{\text{и}} = \res{Cint}$~мкФ
+          ($\tau_{\text{и}} = R_{\text{и}}C_{\text{и}} = \res{tauRC}$~с);
+    \item амперметр $A$ (действующее значение тока);
     \item вольтметр $V$, делитель напряжения 1:10, 1:100;
-    \item электронный осциллограф: \fillme.
+    \item электронный осциллограф (режим $X$--$Y$).
 \end{itemize}
 
 \section{Экспериментальная установка и методика измерений}
@@ -298,7 +300,6 @@ $I \approx U_\vx / R_{\text{и}}$ и
 \begin{figure}[!ht]
     \centering
     \begin{circuitikz}[scale=0.95, transform shape]
-        % первичная цепь
         \draw (0,0) to[sV, l_=$U_0$] (0,3)
               to[rmeter, t=A] (2.6,3)
               to[short] (3.4,3)
@@ -307,11 +308,9 @@ $I \approx U_\vx / R_{\text{и}}$ и
         \node[left, align=center] at (-1.1,1.5) {\small $T$\\[-1mm]\small $\approx$220~В,\\[-1mm]\small 50~Гц};
         \draw (3.4,0) to[short, *-o] (3.4,-1.1) node[below] {\small $X$};
         \draw (0,0) to[short, *-o] (0,-1.1) node[below] {\small общий};
-        % сердечник
         \draw[very thick] (4.05,0.2) -- (4.05,2.8);
         \draw[very thick] (4.25,0.2) -- (4.25,2.8);
         \node at (4.15,3.35) {\small образец};
-        % измерительная цепь
         \draw (4.9,3) to[cute inductor, l=$N_{\text{и}}$] (4.9,0);
         \draw (4.9,3) to[R, l=$R_{\text{и}}$] (8,3) to[C, l=$C_{\text{и}}$] (8,0) -- (4.9,0);
         \draw (8,3) to[short, *-o] (9.4,3) node[right] {\small $Y$};
@@ -325,108 +324,77 @@ $I \approx U_\vx / R_{\text{и}}$ и
 Порядок измерений:
 \begin{enumerate}
     \item Подбирается ток в намагничивающей обмотке, при котором наблюдается
-          предельная петля (при изменении тока меняется лишь длина «усов»).
-          Коэффициенты $K_x$, $K_y$ выбираются так, чтобы петля занимала
-          б\'{о}льшую часть экрана (ручки плавной регулировки --- в
-          положении калибровки). Петля фотографируется.
+          предельная петля; коэффициенты $K_x$, $K_y$ выбираются так,
+          чтобы петля занимала б\'{о}льшую часть экрана.
     \item По сетке экрана измеряются полные ширина и высота петли $[2X_s]$,
           $[2Y_s]$, ширина петли на оси абсцисс $[2X_c]$ и высота на оси
-          ординат $[2Y_r]$.
-    \item Плавно уменьшая ток до нуля, отмечаются положения вершин
-          $8\div10$ частных петель $[2X_A]$, $[2Y_A]$ --- точки начальной
-          кривой намагничивания.
+          ординат $[2Y_r]$ (для $[2X_c]$, $[2Y_r]$ масштаб при
+          необходимости увеличивается).
+    \item Плавно уменьшая ток до нуля, отмечаются координаты вершин частных
+          петель $[X_A]$, $[Y_A]$ (отсчитываются от центра петли) ---
+          точки начальной кривой намагничивания.
     \item Измерения повторяются для всех образцов.
     \item Калибровка канала $X$ по \cref{eq:calib_x} (обмотка $N_0$
-          закорочена) для всех использованных $K_x$; проверка канала $Y$
-          подачей известного напряжения через делитель 1:100.
-    \item Измерение отношения $U_\vx/U_\vy$ для $RC$-ячейки и расчёт
-          $\tau_{\text{и}}$ по \cref{eq:tau}.
+          закорочена); проверка канала $Y$ подачей известного напряжения
+          через делитель.
+    \item Измерение размахов сигнала на входе и выходе $RC$-ячейки и
+          расчёт $\tau_{\text{и}}$ по \cref{eq:tau}.
 \end{enumerate}
-Погрешность отсчёта по сетке экрана принята равной $\pm0{,}1$~дел.
+
+Все отсчёты по экрану делались в \emph{малых делениях} сетки
+(1~большое деление $=5$~малых), коэффициенты отклонения $K_x$, $K_y$
+указаны в мВ на большое деление (положение переключателя). Далее
+«дел.» --- малое деление. Погрешность отсчёта принята равной
+$\pm0{,}5$~дел.
 
 \section{Результаты измерений и обработка данных}
 
-\subsection{Параметры образцов}
-Параметры тороидов (с установки) приведены в \cref{tab:samples}.
-
-\begin{table}[!ht]
-    \centering
-    \caption{Параметры образцов}
-    \label{tab:samples}
-    \csvreader[
-        tabularray = {
-            colspec = {|c|c|c|c|c|c|},
-            hlines, vlines, row{1} = {font=\bfseries},
-        },
-        table head = {
-            № & Материал & $N_0$ & $N_{\text{и}}$ & $S$, см$^2$ & $2\pi R$, см \\
-        },
-    ]%
-    {../data/processed/samples_processed.csv}%
-    {sample=\cS, material=\cM, N0=\cN, N_i=\cNi, S_cm2=\cSs, L_cm=\cL}%
-    {\cS & \cM & $\cN$ & $\cNi$ & $\cSs$ & $\cL$}
-\end{table}
-
 \subsection{Калибровка канала $X$}
-Результаты калибровки при закороченной обмотке $N_0$ приведены в
-\cref{tab:calib_x}; $M_x^{\text{эксп}}$ рассчитано по \cref{eq:calib_x},
-$M_x^{\text{теор}} = K_x/R_0$.
+Результаты калибровки при закороченной обмотке $N_0$ и $K_x = 50$~мВ/дел
+приведены в \cref{tab:calib_x}; цена малого деления по току $M_x$
+рассчитана по \cref{eq:calib_x}.
 
 \begin{table}[!ht]
     \centering
-    \caption{Калибровка канала $X$}
+    \caption{Калибровка канала $X$ ($K_x = 50$~мВ/дел)}
     \label{tab:calib_x}
     \csvreader[
         tabularray = {
-            colspec = {|c|c|c|c|c|c|},
+            colspec = {|c|c|c|c|},
             hlines, vlines, row{1} = {font=\bfseries},
         },
         table head = {
             $K_x$, мВ/дел & $I_{\text{эфф}}$, мА & $[2X]$, дел &
-            $M_x^{\text{эксп}}$, мА/дел & $M_x^{\text{теор}}$, мА/дел &
-            $\varepsilon$, \% \\
+            $M_x$, мА/дел \\
         },
     ]%
     {../data/processed/calib_x_processed.csv}%
-    {Kx=\cK, I_eff_mA=\cI, X2=\cX, Mx_exp=\cMe, Mx_th=\cMt, dev_percent=\cD}%
-    {$\cK$ & $\cI$ & $\cX$ & $\cMe$ & $\cMt$ & $\cD$}
+    {Kx=\cK, I_eff_mA=\cI, X2=\cX, Mx=\cM}%
+    {$\cK$ & $\cI$ & $\cX$ & $\cM$}
 \end{table}
 
-Эффективное сопротивление, определённое по калибровке,
-$R_0^{\text{эфф}} = K_x/M_x = \res{R0eff}$~Ом (номинал $R_0 = \res{R0}$~Ом).
-Относительная погрешность цены деления по току
-$\varepsilon_{M_x} \approx \res{epsMx}$~\% (класс амперметра и отсчёт длины
-развёртки).
+Среднее значение $M_x = (\res{Mx})$~мА/дел ($\varepsilon_{M_x} \approx
+\res{epsMx}$~\%: разброс трёх измерений и погрешность отсчёта длины
+развёртки). При номинальных $R_0 = \res{R0}$~Ом и $K_x = 50$~мВ/дел
+ожидалось бы $M_x^{\text{ном}} = K_x/(5R_0) = \res{MxNom}$~мА/дел;
+измеренная цена деления на $\res{MxDev}$~\% меньше, что показывает, что калибровка канала $X$
+необходима. Для других положений переключателя цена деления
+пересчитывается пропорционально $K_x$.
 
 \subsection{Проверка калибровки канала $Y$}
-\begin{table}[!ht]
-    \centering
-    \caption{Проверка канала $Y$: $M_y = 2\sqrt2\,U_{\text{эфф}}/[2Y]$}
-    \label{tab:calib_y}
-    \csvreader[
-        tabularray = {
-            colspec = {|c|c|c|c|c|},
-            hlines, vlines, row{1} = {font=\bfseries},
-        },
-        table head = {
-            $K_y$, мВ/дел & $U_{\text{эфф}}$, мВ & $[2Y]$, дел &
-            $M_y$, мВ/дел & $\varepsilon$, \% \\
-        },
-    ]%
-    {../data/processed/calib_y_processed.csv}%
-    {Ky=\cK, U_eff_mV=\cU, Y2=\cY, My_exp=\cM, dev_percent=\cD}%
-    {$\cK$ & $\cU$ & $\cY$ & $\cM$ & $\cD$}
-\end{table}
-
-Измеренная цена деления отличается от номинальной $K_y$ не более чем на
-$\res{devY}$~\% (\cref{tab:calib_y}), что согласуется с паспортной
-погрешностью осциллографа; в расчётах используются номинальные значения
-$K_y$.
+При $K_y = 0{,}2$~В/дел, $U_{\text{эфф}} = 0{,}38$~В высота линии на
+экране $[2Y] = 28$~дел, откуда цена малого деления
+\begin{equation*}
+    K'_y = \frac{2\sqrt2\,U_{\text{эфф}}}{[2Y]} = (\res{Kyp})~\text{мВ/дел}
+\end{equation*}
+при номинальной $K_y/5 = \res{KyNom}$~мВ/дел (измеренная на $\res{KyDev}$~\% меньше, в
+пределах паспортной точности осциллографа). В расчётах используется
+измеренное значение $K'_y$, пересчитанное пропорционально $K_y$.
 
 \subsection{Постоянная времени интегрирующей цепочки}
 \begin{table}[!ht]
     \centering
-    \caption{Измерение постоянной времени $RC$-цепочки}
+    \caption{Размах сигнала на входе и выходе $RC$-цепочки}
     \label{tab:rc}
     \csvreader[
         tabularray = {
@@ -434,99 +402,215 @@ $K_y$.
             hlines, vlines, row{1} = {font=\bfseries},
         },
         table head = {
-            $U_\vx$, мВ & $U_\vy$, мВ & $\nu$, Гц & $\tau_{\text{и}}$, мс \\
+            Сигнал & $K_y$, мВ/дел & $[2Y]$, дел & $2U$, мВ \\
         },
     ]%
     {../data/processed/rc_processed.csv}%
-    {U_in_mV=\cA, U_out_mV=\cB, nu_Hz=\cN, tau_ms=\cT}%
-    {$\cA$ & $\cB$ & $\cN$ & $\cT$}
+    {sig=\cS, Ky=\cK, Y2=\cY, U=\cU}%
+    {\cS & $\cK$ & $\cY$ & $\cU$}
 \end{table}
 
-По \cref{eq:tau}
+Отношение амплитуд $U_\vx/U_\vy = \res{ratioU}$ (поправка канала $Y$ в
+отношении сокращается), и по \cref{eq:tau}
 \begin{equation*}
-    \tau_{\text{и}}^{\text{эксп}} = (\res{tauExp})~\text{мс},
+    \tau_{\text{и}}^{\text{эксп}} = \frac{U_\vx}{\omega_0 U_\vy}
+    = (\res{tauExp})~\text{с},
     \qquad
-    \tau_{\text{и}}^{RC} = R_{\text{и}}C_{\text{и}} = \res{tauRC}~\text{мс};
+    \tau_{\text{и}}^{RC} = R_{\text{и}}C_{\text{и}} = \res{tauRC}~\text{с}.
 \end{equation*}
-расхождение составляет $\res{tauDev}$~\%. Условие \cref{eq:tau_cond}
-выполняется: $\omega_0\tau_{\text{и}} \approx \res{omegaTau} \gg 1$.
-В дальнейших расчётах используется $\tau_{\text{и}}^{\text{эксп}}$.
+Погрешность $\tau^{\text{эксп}}$ включает отсчёт размахов и погрешность
+коэффициентов двух разных диапазонов канала $Y$ ($\sim3$~\% каждый).
+Значения расходятся на $\res{tauDev}$~\%, что больше оценённой
+погрешности (см. обсуждение). Условие интегрирования \cref{eq:tau_cond}
+выполнено с большим запасом: $\omega_0\tau_{\text{и}} \approx
+\res{omegaTauExp}\div\res{omegaTau} \gg 1$. В дальнейших расчётах
+используется паспортное значение $\tau_{\text{и}} = R_{\text{и}}C_{\text{и}}$.
+
+\subsection{Коэффициенты пересчёта}
+Параметры тороидов входят в расчёт только в комбинациях $N_0/2\pi R$
+(\cref{eq:hx}) и $SN_{\text{и}}$ (\cref{eq:B}). Цены малого деления
+\begin{equation*}
+    h = \frac{N_0}{2\pi R}\,M_x\frac{K_x}{50~\text{мВ/дел}}, \qquad
+    b = \frac{\tau_{\text{и}}}{SN_{\text{и}}}\,K'_y\frac{K_y}{0{,}2~\text{В/дел}}
+\end{equation*}
+приведены в \cref{tab:coefs} для опорных масштабов $K_x = 50$~мВ/дел,
+$K_y = 0{,}2$~В/дел; для остальных масштабов они пересчитываются
+пропорционально.
+
+\begin{table}[!ht]
+    \centering
+    \caption{Параметры образцов и цены малого деления}
+    \label{tab:coefs}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|l|c|c|c|c|},
+            hlines, vlines, row{1} = {font=\bfseries},
+        },
+        table head = {
+            № & Материал & $N_0/2\pi R$, м$^{-1}$ & $SN_{\text{и}}$, см$^2$ &
+            $h_{50}$, $\frac{\text{А/м}}{\text{дел}}$ &
+            $b_{200}$, $\frac{\text{Тл}}{\text{дел}}$ \\
+        },
+    ]%
+    {../data/processed/coefs.csv}%
+    {sample=\cS, material=\cM, NL=\cN, SN=\cSN, h50=\cH, b200=\cB}%
+    {\cS & \cM & $\cN$ & $\cSN$ & $\cH$ & $\cB$}
+\end{table}
 
 \subsection{Предельные петли гистерезиса}
-Фотографии предельных петель приведены на \cref{fig:loops}.
-
-\begin{figure}[!ht]
+Предельные петли измерены при наибольшем токе, в тех же масштабах, в
+которых затем снималась начальная кривая (\cref{tab:loops_raw}).
+\begin{table}[!ht]
     \centering
-    \begin{subfigure}{0.32\textwidth}
-        \centering \labimage{loop_1.jpg}{1.0}
-        \caption{образец 1 (\res{mat1})}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}{0.32\textwidth}
-        \centering \labimage{loop_2.jpg}{1.0}
-        \caption{образец 2 (\res{mat2})}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}{0.32\textwidth}
-        \centering \labimage{loop_3.jpg}{1.0}
-        \caption{образец 3 (\res{mat3})}
-    \end{subfigure}
-    \caption{Предельные петли гистерезиса на экране осциллографа}
-    \label{fig:loops}
-\end{figure}
+    \caption{Размеры предельных петель (двойные амплитуды, дел.)}
+    \label{tab:loops_raw}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|c|c|c|c|},
+            hlines, vlines, row{1} = {font=\bfseries},
+        },
+        table head = {
+            № & $K_x$, мВ/дел & $K_y$, мВ/дел &
+            $[2X_s]$ & $[2Y_s]$ & $[2X_c]$ & $[2Y_r]$ \\
+        },
+    ]%
+    {../data/processed/loops_raw.csv}%
+    {sample=\cS, Kx=\cKx, Ky=\cKy, X2s=\cXs, Y2s=\cYs, X2c=\cXc, Y2r=\cYr}%
+    {\cS & $\cKx$ & $\cKy$ & $\cXs$ & $\cYs$ & $\cXc$ & $\cYr$}
+\end{table}
 
-Пересчёт делений в поля выполнен по \cref{eq:hx,eq:B}; для каждого образца
-$H_s = h_x[2X_s]/2$, $B_s = b_y[2Y_s]/2$, $H_c = h_x[2X_c]/2$,
-$B_r = b_y[2Y_r]/2$. Результаты сведены в \cref{tab:loops}. Погрешности
-включают погрешность отсчёта по экрану, калибровки канала $X$,
-коэффициента $K_y$ и постоянной времени $\tau_{\text{и}}$:
+Так как отсчитывались \emph{двойные} амплитуды, характеристики
+материала равны половине пересчитанных размеров:
 \begin{equation*}
-    \varepsilon_H = \sqrt{\varepsilon_{M_x}^2 + \left(\frac{\Delta[X]}{[2X]}\right)^2},
-    \qquad
-    \varepsilon_B = \sqrt{\varepsilon_{K_y}^2 + \varepsilon_{\tau}^2
-                          + \left(\frac{\Delta[Y]}{[2Y]}\right)^2}.
+    H_s = h\frac{[2X_s]}{2},\quad B_s = b\frac{[2Y_s]}{2},\quad
+    H_c = h\frac{[2X_c]}{2},\quad B_r = b\frac{[2Y_r]}{2}.
 \end{equation*}
+Относительные погрешности
+\begin{equation*}
+    \varepsilon_H = \sqrt{\varepsilon_{M_x}^2 + \left(\frac{0{,}5}{[2X]}\right)^2},
+    \qquad
+    \varepsilon_B = \sqrt{\varepsilon_{K'_y}^2 + \left(\frac{0{,}5}{[2Y]}\right)^2},
+\end{equation*}
+где $\varepsilon_{M_x} \approx \res{epsMx}$~\%, $\varepsilon_{K'_y} \approx
+\res{epsKy}$~\%. Результаты --- в \cref{tab:loops}.
+
+\begin{table}[!ht]
+    \centering
+    \caption{Характеристики предельных петель ($H_s$, $B_s$ --- амплитуды
+             поля и индукции в вершине петли)}
+    \label{tab:loops}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|l|c|c|c|c|c|},
+            hlines, vlines, row{1} = {font=\bfseries},
+        },
+        table head = {
+            № & Материал & $H_s$, А/м & $B_s$, Тл & $H_c$, А/м & $B_r$, Тл
+            & $B_r/B_s$ \\
+        },
+    ]%
+    {../data/processed/loops_processed.csv}%
+    {sample=\cS, material=\cM, Hs=\cHs, dHs=\cdHs, Bs=\cBs, dBs=\cdBs,
+     Hc=\cHc, dHc=\cdHc, Br=\cBr, dBr=\cdBr, ratio=\cR}%
+    {\cS & \cM & $\cHs\pm\cdHs$ & $\cBs\pm\cdBs$
+     & $\cHc\pm\cdHc$ & $\cBr\pm\cdBr$ & $\cR$}
+\end{table}
+
+\subsection{Петли при меньшей амплитуде поля}
+При первом обходе (напряжение автотрансформатора 60~В) размеры петель
+измерялись непосредственно по экрану с увеличением масштаба для
+$[2X_c]$ и $[2Y_r]$ (\cref{tab:loops_scr_raw,tab:loops_scr}).
+
+\begin{table}[H]
+    \centering
+    \caption{Размеры петель при 60~В на автотрансформаторе (дел.; в скобках --- $K$, мВ/дел)}
+    \label{tab:loops_scr_raw}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|c|c|c|c|},
+            hlines, vlines, row{1} = {font=\bfseries},
+        },
+        table head = {
+            № & $[2X_s]$ ($K_x$) & $[2Y_s]$ ($K_y$) & $[2X_c]$ ($K_x$) & $[2Y_r]$ ($K_y$) \\
+        },
+    ]%
+    {../data/processed/loops_screen_raw.csv}%
+    {sample=\cS, Kx_s=\cKxs, Ky_s=\cKys, X2s=\cXs, Y2s=\cYs,
+     Kx_c=\cKxc, X2c=\cXc, Ky_r=\cKyr, Y2r=\cYr}%
+    {\cS & $\cXs$ ($\cKxs$) & $\cYs$ ($\cKys$) & $\cXc$ ($\cKxc$) & $\cYr$ ($\cKyr$)}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \caption{Характеристики петель при 60~В на автотрансформаторе}
+    \label{tab:loops_scr}
+    \csvreader[
+        tabularray = {
+            colspec = {|c|l|c|c|c|c|c|},
+            hlines, vlines, row{1} = {font=\bfseries},
+        },
+        table head = {
+            № & Материал & $H_s$, А/м & $B_s$, Тл & $H_c$, А/м & $B_r$, Тл
+            & $B_r/B_s$ \\
+        },
+    ]%
+    {../data/processed/loops_screen_processed.csv}%
+    {sample=\cS, material=\cM, Hs=\cHs, dHs=\cdHs, Bs=\cBs, dBs=\cdBs,
+     Hc=\cHc, dHc=\cdHc, Br=\cBr, dBr=\cdBr, ratio=\cR}%
+    {\cS & \cM & $\cHs\pm\cdHs$ & $\cBs\pm\cdBs$
+     & $\cHc\pm\cdHc$ & $\cBr\pm\cdBr$ & $\cR$}
+\end{table}
+
+Вершины этих петель ложатся на начальные кривые намагничивания
+(\cref{fig:initial}). Для кремнистого железа и феррита амплитуда поля
+здесь в $1{,}5\div3$ раза меньше, чем в \cref{tab:loops}, и образцы далеки
+от насыщения --- это частные петли, поэтому $H_c$ и $B_r$ у них заметно
+меньше. Для пермаллоя, который насыщается уже при $H \approx 30$~А/м,
+обе серии дают одну и ту же индукцию $B_s = 1{,}43$~Тл и близкие $B_r$,
+$H_c$, что подтверждает воспроизводимость измерений.
+
+\subsection{Начальные кривые намагничивания}
+Координаты вершин частных петель (отсчитанные от центра, т.е.
+одинарные амплитуды) и рассчитанные по ним $H$ и $B$ приведены в
+\cref{tab:init}, кривые $B(H)$ --- на \cref{fig:initial}.
 
 \begin{table}[!ht]
     \centering
     \small
-    \caption{Характеристики предельных петель: $h_x$ и $b_y$ --- цены
-             деления при измерении $[2X_s]$, $[2Y_s]$}
-    \label{tab:loops}
+    \caption{Начальные кривые намагничивания ($[X]$, $[Y]$ --- дел.;
+             $K_x$, $K_y$ --- мВ/дел)}
+    \label{tab:init}
+    \begin{minipage}[t]{0.32\textwidth}\centering
+    кремнистое железо\\[1mm]
     \csvreader[
-        tabularray = {
-            colspec = {|c|c|c|c|c|c|c|c|},
-            hlines, vlines, row{1} = {font=\bfseries},
-        },
-        table head = {
-            № & Материал & $h_x$, $\frac{\text{А/м}}{\text{дел}}$ &
-            $b_y$, $\frac{\text{Тл}}{\text{дел}}$ &
-            $H_s$, А/м & $B_s$, Тл & $H_c$, А/м & $B_r$, Тл \\
-        },
-    ]%
-    {../data/processed/loops_processed.csv}%
-    {sample=\cS, material=\cM, hx=\cH, by=\cB, Hs=\cHs, dHs=\cdHs,
-     Bs=\cBs, dBs=\cdBs, Hc=\cHc, dHc=\cdHc, Br=\cBr, dBr=\cdBr}%
-    {\cS & \cM & $\cH$ & $\cB$ & $\cHs\pm\cdHs$ & $\cBs\pm\cdBs$
-     & $\cHc\pm\cdHc$ & $\cBr\pm\cdBr$}
+        tabularray = {colspec = {|c|c|c|c|}, hlines, vlines,
+                      rowsep=0pt, row{1} = {font=\bfseries}},
+        table head = {$[X]$ & $[Y]$ & $H$, А/м & $B$, Тл \\},
+    ]{../data/processed/initial_1.csv}%
+    {X=\cX, Y=\cY, H=\cH, B=\cB}{$\cX$ & $\cY$ & $\cH$ & $\cB$}\\[1mm]
+    \footnotesize первые 7 точек: $K_x=50$, $K_y=10$;\\ остальные: $K_x=100$, $K_y=20$
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.32\textwidth}\centering
+    феррит\\[1mm]
+    \csvreader[
+        tabularray = {colspec = {|c|c|c|c|}, hlines, vlines,
+                      rowsep=0pt, row{1} = {font=\bfseries}},
+        table head = {$[X]$ & $[Y]$ & $H$, А/м & $B$, Тл \\},
+    ]{../data/processed/initial_2.csv}%
+    {X=\cX, Y=\cY, H=\cH, B=\cB}{$\cX$ & $\cY$ & $\cH$ & $\cB$}\\[1mm]
+    \footnotesize $K_x=100$, $K_y=50$
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.32\textwidth}\centering
+    пермаллой\\[1mm]
+    \csvreader[
+        tabularray = {colspec = {|c|c|c|c|}, hlines, vlines,
+                      rowsep=0pt, row{1} = {font=\bfseries}},
+        table head = {$[X]$ & $[Y]$ & $H$, А/м & $B$, Тл \\},
+    ]{../data/processed/initial_3.csv}%
+    {X=\cX, Y=\cY, H=\cH, B=\cB}{$\cX$ & $\cY$ & $\cH$ & $\cB$}\\[1mm]
+    \footnotesize $K_x=100$, $K_y=50$
+    \end{minipage}
 \end{table}
-
-Потери на перемагничивание оценены по площади петли $A$ (в дел$^2$,
-по фотографии): $w = A\,h_x b_y$, $P/V = \nu_0 w$ (\cref{eq:loss}):
-\begin{center}
-\begin{tblr}{colspec={|c|c|c|c|}, hlines, vlines, row{1}={font=\bfseries}}
-    Образец & 1 & 2 & 3 \\
-    $w$, Дж/м$^3$ & $\res{w1}$ & $\res{w2}$ & $\res{w3}$ \\
-    $P/V$, кВт/м$^3$ & $\res{P1}$ & $\res{P2}$ & $\res{P3}$ \\
-\end{tblr}
-\end{center}
-
-\clearpage
-\subsection{Начальные кривые намагничивания}
-Вершины частных петель, пересчитанные в $H$ и $B$, показаны на
-\cref{fig:initial}; на \cref{fig:mudiff} --- дифференциальная
-проницаемость $\mu_{\text{диф}} = \Delta B/(\mu_0\Delta H)$, рассчитанная по
-соседним точкам.
 
 \begin{figure}[!ht]
     \centering
@@ -534,134 +618,166 @@ $B_r = b_y[2Y_r]/2$. Результаты сведены в \cref{tab:loops}. П
         \begin{axis}[
             width=0.85\textwidth, height=0.55\textwidth,
             xlabel={$H$, А/м}, ylabel={$B$, Тл},
-            xmin=0, ymin=0,
+            xmin=0, xmax=250, ymin=0, ymax=1.6,
             grid=both, minor tick num=1,
-            legend pos=south east,
-            scaled x ticks=false,
+            legend style={at={(0.97,0.62)}, anchor=east}, legend cell align=left,
         ]
-            \addplot[thick, mark=*] table[col sep=comma, x=H, y=B]
-                {../data/processed/initial_1.csv};
-            \addlegendentry{образец 1}
-            \addplot[thick, mark=square*] table[col sep=comma, x=H, y=B]
-                {../data/processed/initial_2.csv};
-            \addlegendentry{образец 2}
-            \addplot[thick, mark=triangle*] table[col sep=comma, x=H, y=B]
-                {../data/processed/initial_3.csv};
-            \addlegendentry{образец 3}
+            \addplot[thick, mark=*, mark size=1.6pt] table[col sep=comma, x=H, y=B]
+                {../data/processed/initial_plot_1.csv};
+            \addlegendentry{кремнистое железо}
+            \addplot[thick, dashed, mark=square*, mark size=1.6pt] table[col sep=comma, x=H, y=B]
+                {../data/processed/initial_plot_2.csv};
+            \addlegendentry{феррит}
+            \addplot[thick, densely dotted, mark=triangle*, mark size=2pt] table[col sep=comma, x=H, y=B]
+                {../data/processed/initial_plot_3.csv};
+            \addlegendentry{пермаллой}
         \end{axis}
     \end{tikzpicture}
-    \caption{Начальные кривые намагничивания $B(H)$ (по вершинам частных петель)}
+
+    \vspace{3mm}
+    \begin{tikzpicture}
+        \begin{axis}[
+            width=0.85\textwidth, height=0.45\textwidth,
+            xlabel={$H$, А/м}, ylabel={$B$, Тл},
+            xmin=0, xmax=250, ymin=0, ymax=0.62,
+            grid=both, minor tick num=1,
+            legend pos=south east, legend cell align=left,
+        ]
+            \addplot[thick, mark=*, mark size=1.6pt] table[col sep=comma, x=H, y=B]
+                {../data/processed/initial_plot_1.csv};
+            \addlegendentry{кремнистое железо}
+            \addplot[thick, dashed, mark=square*, mark size=1.6pt] table[col sep=comma, x=H, y=B]
+                {../data/processed/initial_plot_2.csv};
+            \addlegendentry{феррит}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Начальные кривые намагничивания $B(H)$: вверху --- все образцы,
+             внизу --- кремнистое железо и феррит в увеличенном масштабе по $B$}
     \label{fig:initial}
 \end{figure}
 
-\begin{figure}[!ht]
-    \centering
-    \begin{tikzpicture}
-        \begin{axis}[
-            width=0.85\textwidth, height=0.5\textwidth,
-            xlabel={$H$, А/м}, ylabel={$\mu_{\text{диф}}$},
-            xmin=0, ymin=0,
-            grid=both, minor tick num=1,
-            legend pos=north east,
-            scaled x ticks=false,
-        ]
-            \addplot[thick, mark=*] table[col sep=comma, x=H, y=mu_diff]
-                {../data/processed/mudiff_1.csv};
-            \addlegendentry{образец 1}
-            \addplot[thick, mark=square*] table[col sep=comma, x=H, y=mu_diff]
-                {../data/processed/mudiff_2.csv};
-            \addlegendentry{образец 2}
-            \addplot[thick, mark=triangle*] table[col sep=comma, x=H, y=mu_diff]
-                {../data/processed/mudiff_3.csv};
-            \addlegendentry{образец 3}
-        \end{axis}
-    \end{tikzpicture}
-    \caption{Дифференциальная магнитная проницаемость вдоль начальной кривой}
-    \label{fig:mudiff}
-\end{figure}
+Начальная проницаемость оценена как наклон прямой $B = \mu_0\mu_{\text{нач}}H$,
+проведённой методом наименьших квадратов через начало координат по трём
+первым точкам. Максимальная дифференциальная проницаемость
+$\mu_{\text{диф}} = \Delta B/(\mu_0\Delta H)$ найдена по соседним точкам на
+самом крутом участке кривой; учитывались только отрезки с приращением
+$\Delta[Y] \geqslant 1{,}5$~дел, иначе погрешность отсчёта превышает
+100~\%. Погрешность $\mu_{\text{диф}}$ определяется отсчётом малых
+приращений $\Delta[X]$, $\Delta[Y]$ ($\pm0{,}5\sqrt2$~дел) и велика ---
+это оценка порядка величины.
 
 \begin{table}[!ht]
     \centering
     \caption{Начальная и максимальная дифференциальная проницаемости}
     \label{tab:mu}
-    \begin{tblr}{colspec={|c|c|c|c|}, hlines, vlines, row{1}={font=\bfseries}}
+    \begin{tblr}{colspec={|l|c|c|c|}, hlines, vlines, row{1}={font=\bfseries}}
         Образец & $\mu_{\text{нач}}$ & $\mu_{\text{диф}}^{\max}$ &
             $H$ при $\mu_{\text{диф}}^{\max}$, А/м \\
-        1 & $\res{muInit1}$ & $\res{muMax1}$ & $\res{HmuMax1}$ \\
-        2 & $\res{muInit2}$ & $\res{muMax2}$ & $\res{HmuMax2}$ \\
-        3 & $\res{muInit3}$ & $\res{muMax3}$ & $\res{HmuMax3}$ \\
+        кремнистое железо & $\res{muInit1}$ & $\res{muMax1}$ & $\res{HmuMax1}$ \\
+        феррит            & $\res{muInit2}$ & $\res{muMax2}$ & $\res{HmuMax2}$ \\
+        пермаллой         & --- & $\res{muMax3}$ & $\res{HmuMax3}$ \\
     \end{tblr}
 \end{table}
 
-Начальная проницаемость оценена как $B/(\mu_0H)$ в первой (наименьшей по
-$H$) точке; поскольку частные петли при малых токах плохо различимы на
-экране, эта оценка грубая (погрешность порядка $20\div30$~\%).
-\fillme: описать вид кривых (участок быстрого роста, выход на насыщение).
+Для пермаллоя индукция при $H \approx 9$~А/м ещё меньше цены деления, а на
+следующем шаге ($H \approx 22$~А/м) уже близка к насыщению, поэтому
+$\mu_{\text{нач}}$ определить нельзя, а $\mu_{\text{диф}}^{\max}$ получена по
+одному крутому участку и является оценкой снизу.
 
 \section{Обсуждение результатов}
-Сравнение с типичными (справочными) значениями приведено в
+Сравнение с ориентировочными справочными значениями приведено в
 \cref{tab:compare}. Справочные значения относятся, как правило, к
-квазистатическому перемагничиванию; при частоте 50~Гц из-за вихревых токов
-петля «расширяется», поэтому динамическое $H_c$ обычно больше
-статического.
+квазистатическому перемагничиванию; на частоте 50~Гц из-за вихревых
+токов петля «расширяется», поэтому динамическое $H_c$ у проводящих
+материалов больше статического.
 
 \begin{table}[!ht]
     \centering
-    \caption{Сравнение со справочными данными (порядок величины)}
+    \small
+    \caption{Сравнение с ориентировочными справочными данными}
     \label{tab:compare}
-    \begin{tblr}{colspec={|l|c|c|c|c|}, hlines, vlines, row{1}={font=\bfseries}}
-        Материал & $H_c^{\text{эксп}}$, А/м & $H_c^{\text{спр}}$, А/м
-                 & $B_s^{\text{эксп}}$, Тл & $B_s^{\text{спр}}$, Тл \\
-        \res{mat1} & $\res{Hc1}$ & \qq & $\res{Bs1}$ & \qq \\
-        \res{mat2} & $\res{Hc2}$ & \qq & $\res{Bs2}$ & \qq \\
-        \res{mat3} & $\res{Hc3}$ & \qq & $\res{Bs3}$ & \qq \\
+    \begin{tblr}{colspec={|l|c|c|c|c|c|c|}, hlines, vlines, row{1}={font=\bfseries}}
+        Материал & $H_c$, А/м & $H_c^{\text{спр}}$, А/м
+                 & $B_s$, Тл & $B_s^{\text{спр}}$, Тл
+                 & $\mu^{\max}$ & $\mu^{\max}_{\text{спр}}$ \\
+        кремнистое железо & $\res{Hc1}$ & $10\div100$ & $\res{Bs1}$ & $\approx 2$
+                          & $\approx 3{,}8\cdot10^3$ & $10^3\div10^4$ \\
+        феррит (Mn--Zn)   & $\res{Hc2}$ & $8\div25$ & $\res{Bs2}$ & $0{,}3\div0{,}4$
+                          & $\approx 2\cdot10^3$ & $\sim 2\cdot10^3$ \\
+        пермаллой         & $\res{Hc3}$ & $1\div20$ & $\res{Bs3}$ & $0{,}75\div1{,}5$
+                          & $\sim 6\cdot10^4$ & $10^4\div10^5$ \\
     \end{tblr}
 \end{table}
 
-Ориентиры: феррит марганец-цинковый (2000НМ) --- $H_c \sim 10\div25$~А/м,
-$B_s \approx 0{,}35\div0{,}4$~Тл; пермаллой (79НМ) --- $H_c \sim 1\div5$~А/м,
-$B_s \approx 0{,}7\div0{,}8$~Тл; кремнистое (трансформаторное) железо ---
-$H_c \sim 10\div50$~А/м, $B_s \approx 1{,}5\div2$~Тл.
-
 \begin{itemize}
-    \item \fillme: какой из образцов магнитомягкий (наименьшее $H_c$),
-          какой обладает наибольшей индукцией насыщения и наибольшими
-          потерями.
-    \item Калибровка канала $X$ даёт $R_0^{\text{эфф}} = \res{R0eff}$~Ом,
-          что \fillme\ с номиналом $R_0 = \res{R0}$~Ом.
-    \item Постоянная времени, измеренная по \cref{eq:tau}, совпадает с
-          $R_{\text{и}}C_{\text{и}}$ с точностью $\res{tauDev}$~\%;
-          условие интегрирования $\omega_0\tau \gg 1$ выполнено с запасом
-          $\omega_0\tau \approx \res{omegaTau}$.
-    \item Основные источники погрешности: отсчёт по сетке экрана
-          (особенно для узких петель и малых частных петель), класс
-          амперметра, точность коэффициентов отклонения осциллографа.
-          Систематически: $U_\vy$ не пренебрежимо мало по сравнению с
-          $U_\vx$ (относительная поправка $\sim 1/(\omega_0\tau)^2$),
-          неоднородность поля по сечению тора ($H \propto 1/r$),
-          скин-эффект в проводящих образцах.
+    \item \textbf{Кремнистое железо} имеет наибольшее коэрцитивное поле
+          $H_c = (\res{Hc1})$~А/м и наиболее широкую петлю. Насыщение при
+          достигнутых полях ($H_s \approx \res{Hs1}$~А/м) не наступает:
+          начальная кривая продолжает расти почти линейно, поэтому
+          полученное $B_s = (\res{Bs1})$~Тл --- индукция при максимальном
+          поле, а не индукция насыщения ($\approx2$~Тл). Значение $H_c$ лежит
+          в типичном для электротехнической стали диапазоне с учётом
+          вихревых токов на 50~Гц.
+    \item \textbf{Феррит} --- магнитомягкий материал с наименьшими
+          $H_c = (\res{Hc2})$~А/м и $B_s = (\res{Bs2})$~Тл; начальная
+          кривая выходит на насыщение при $B \approx \res{Bend2}$~Тл.
+          Проницаемость $\mu \sim 2\cdot10^3$ соответствует марке
+          2000НМ. Индукция насыщения несколько ниже справочной
+          ($0{,}3\div0{,}4$~Тл), что может быть связано с погрешностью
+          $\tau_{\text{и}}$ и параметров тороида, а также с нагревом образца.
+    \item \textbf{Пермаллой} имеет почти прямоугольную петлю
+          ($B_r/B_s = \res{ratio3}$), очень большую проницаемость
+          ($\mu_{\text{диф}}^{\max}\sim6\cdot10^4$) и наибольшую
+          индукцию насыщения $B_s = (\res{Bs3})$~Тл, что соответствует
+          низконикелевому пермаллою (типа 50Н, $B_s \approx 1{,}5$~Тл).
+          Его $H_c = (\res{Hc3})$~А/м больше статических значений
+          ($\sim 10$~А/м) из-за вихревых токов в проводящем образце.
+    \item Калибровка показала, что реальные цены деления каналов $X$ и $Y$
+          меньше номинальных на $\res{MxDev}$~\% и $\res{KyDev}$~\%;
+          без калибровки систематическая ошибка в $H$ достигла бы
+          $\sim10$~\%.
+    \item Постоянная времени, измеренная по отношению амплитуд,
+          $\tau^{\text{эксп}} = (\res{tauExp})$~с, на $\res{tauDev}$~\%
+          меньше $R_{\text{и}}C_{\text{и}} = \res{tauRC}$~с. Возможные
+          причины: допуск номиналов $R_{\text{и}}$, $C_{\text{и}}$ (у
+          электролитических конденсаторов до 20~\%) и погрешность
+          коэффициентов отклонения на сильно различающихся диапазонах
+          (1~В/дел и 10~мВ/дел). Эта величина задаёт масштаб по $B$: при
+          использовании $\tau^{\text{эксп}}$ все значения $B$ уменьшились
+          бы на $\res{tauDev}$~\%, что следует рассматривать как
+          систематическую погрешность $B$.
+    \item Основная случайная погрешность --- отсчёт по сетке экрана
+          ($\pm0{,}5$~дел.), особенно для узких петель (феррит: $[2X_c] =
+          4$~дел., $\varepsilon_{H_c}\approx13$~\%) и малых приращений
+          начальной кривой.
 \end{itemize}
 
 \section{Заключение}
-В работе динамическим методом (на частоте 50~Гц) исследованы петли
-гистерезиса трёх ферромагнитных образцов:
+Динамическим методом на частоте 50~Гц исследованы петли гистерезиса и
+начальные кривые намагничивания трёх ферромагнитных образцов:
 \begin{itemize}
-    \item образец 1 (\res{mat1}): $H_c = (\res{Hc1})$~А/м,
-          $B_r = (\res{Br1})$~Тл, $B_s = (\res{Bs1})$~Тл при
-          $H_s = (\res{Hs1})$~А/м;
-    \item образец 2 (\res{mat2}): $H_c = (\res{Hc2})$~А/м,
-          $B_r = (\res{Br2})$~Тл, $B_s = (\res{Bs2})$~Тл при
-          $H_s = (\res{Hs2})$~А/м;
-    \item образец 3 (\res{mat3}): $H_c = (\res{Hc3})$~А/м,
-          $B_r = (\res{Br3})$~Тл, $B_s = (\res{Bs3})$~Тл при
-          $H_s = (\res{Hs3})$~А/м;
-    \item по начальным кривым намагничивания получены максимальные
-          дифференциальные проницаемости $\mu_{\text{диф}}^{\max} \approx
-          \res{muMax1}$, $\res{muMax2}$, $\res{muMax3}$ соответственно;
+    \item кремнистое железо: $H_c = (\res{Hc1})$~А/м,
+          $B_r = (\res{Br1})$~Тл, $B = (\res{Bs1})$~Тл при
+          $H_{\max} = (\res{Hs1})$~А/м (насыщение не достигнуто),
+          $\mu_{\text{нач}} \approx \res{muInit1}$,
+          $\mu_{\text{диф}}^{\max} = \res{muMax1}$;
+    \item феррит: $H_c = (\res{Hc2})$~А/м, $B_r = (\res{Br2})$~Тл,
+          $B_s = (\res{Bs2})$~Тл при $H_s = (\res{Hs2})$~А/м,
+          $\mu_{\text{нач}} \approx \res{muInit2}$,
+          $\mu_{\text{диф}}^{\max} = \res{muMax2}$;
+    \item пермаллой: $H_c = (\res{Hc3})$~А/м, $B_r = (\res{Br3})$~Тл,
+          $B_s = (\res{Bs3})$~Тл при $H_s = (\res{Hs3})$~А/м,
+          $\mu_{\text{диф}}^{\max} \sim \res{muMax3}$;
     \item постоянная времени интегрирующей цепочки
-          $\tau_{\text{и}} = (\res{tauExp})$~мс, условие
+          $\tau_{\text{и}}^{\text{эксп}} = (\res{tauExp})$~с
+          ($R_{\text{и}}C_{\text{и}} = \res{tauRC}$~с), условие
           $\omega_0\tau \gg 1$ выполнено.
 \end{itemize}
-\fillme: вывод о соответствии справочным данным.
+Все три материала магнитомягкие ($H_c < 1$~кА/м). Наиболее «жёсткий» из
+них --- кремнистое железо (наибольшие $H_c$ и потери на
+перемагничивание, пропорциональные площади петли), наибольшую
+проницаемость и индукцию насыщения имеет пермаллой, феррит отличается
+наименьшей индукцией насыщения. Полученные значения по порядку величины
+согласуются со справочными данными.
 
 \end{document}
