@@ -1,1 +1,4 @@
-Kx,I_eff_mA,X2,Mx_exp,Mx_th,dev_percent
+Kx,I_eff_mA,X2,Mx
+50,266.0,25,30.09
+50,403.0,38,30.00
+50,351.8,34,29.27
