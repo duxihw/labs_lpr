@@ -134,12 +134,28 @@ def coefs(sr, Kx, Ky, Mx50, Ky200, tau):
     return h, b
 
 
+def fill_sample_params(samples: pd.DataFrame) -> pd.DataFrame:
+    """N0/(2piR) и S*N_и: из табличных параметров, если они заданы."""
+    s = samples.copy()
+    have = s["N0"].notna() & s["L_cm"].notna()
+    s.loc[have, "NL"] = s.loc[have, "N0"] / (s.loc[have, "L_cm"] * 1e-2)
+    have = s["N_i"].notna() & s["S_cm2"].notna()
+    s.loc[have, "SN"] = s.loc[have, "N_i"] * s.loc[have, "S_cm2"]
+    return s
+
+
 def coef_table(samples, Mx50, Ky200, tau):
     rows = []
+
+    def cell(v):
+        return "---" if pd.isna(v) else f"{v:g}"
+
     for s, sr in samples.iterrows():
         h50, b200 = coefs(sr, 50, 200, Mx50, Ky200, tau)
         rows.append({"sample": s, "material": sr["material"],
-                     "NL": f"{sr['NL']:g}", "SN": f"{sr['SN']:g}",
+                     "N0": cell(sr["N0"]), "N_i": cell(sr["N_i"]),
+                     "S_cm2": cell(sr["S_cm2"]), "L_cm": cell(sr["L_cm"]),
+                     "NL": num_str(sr["NL"], sig=4), "SN": f"{sr['SN']:g}",
                      "h50": num_str(h50, sig=3), "b200": num_str(b200, sig=3)})
         TEX.add(f"h{s}", h50, sig=3)
         TEX.add(f"b{s}", b200, sig=3)
@@ -242,7 +258,7 @@ def main() -> None:
     Mx50, epsx = calib_x(params)
     Ky200, epsy = calib_y(params)
     tau = rc(params)
-    samples = read_raw("samples.csv").set_index("sample")
+    samples = fill_sample_params(read_raw("samples.csv").set_index("sample"))
     coef_table(samples, Mx50, Ky200, tau)
     loops(params, samples, Mx50, epsx, Ky200, epsy, tau,
           "loops.csv", "loops_processed.csv", "")
