@@ -1,0 +1,9 @@
+param,value
+R1,410
+R2,2000
+sR,
+Cset_nF,6
+forced_Cset_nF,5
+sCset_nF,
+lcr_Hz,1500
+Rtransition,6500
