@@ -3,7 +3,7 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit
-from lab_utils import read_params, read_raw, write_processed, TexResults
+from lab_utils import lsq, read_params, read_raw, write_processed, TexResults
 
 pi = np.pi
 
@@ -51,10 +51,6 @@ def calculate(data, params):
         for i in (1,2):
             if R == params.get(f'R{i}'):
                 results[f'{method}{i}'] = pi/theta
-    if len(curves['critical']) >= 2:
-        x,y = np.array(curves['critical']).T
-        if np.isfinite(x).all() and np.ptp(x)>0:
-            results['criticalFit'] = 2*pi*np.sqrt(np.polyfit(x,y,1)[0])
     for i in (1,2):
         R = params.get(f'R{i}', np.nan)
         results[f'calc{i}'] = np.sqrt(L/C)/(R+RL)
@@ -66,6 +62,8 @@ def calculate(data, params):
             k = np.argmax(u)
             amplitude = u/u[k]
             curves[f'amp{i}'] = list(zip(f/f[k],amplitude))
+            results[f'peakFreq{i}'] = f[k]
+            results[f'peakV{i}'] = u[k]
             if 0 < k < len(f)-1:
                 lo = crossing(f[:k+1][::-1],amplitude[:k+1][::-1],2**-.5)
                 hi = crossing(f[k:],amplitude[k:],2**-.5)
@@ -75,7 +73,10 @@ def calculate(data, params):
             f,delay = phase_scan[['f_Hz','delay_us']].to_numpy().T
             phase = -2*pi*f*delay*1e-6
             curves[f'ph{i}'] = list(zip(2*pi*f,phase))
-            lo,mid,hi = [crossing(f,phase,-j*pi/4) for j in (1,2,3)]
+            levels = np.array([-1,-2,-3])*pi/4
+            if np.median(phase)>0:
+                levels += pi  # Положительная ветвь с опорой на синий канал.
+            lo,mid,hi = [crossing(f,phase,level) for level in levels]
             results[f'phase{i}'] = mid/(hi-lo)
     return results, curves
 
@@ -84,6 +85,12 @@ def main():
     data = {name:read_raw(name) for name in
             ('periods.csv','lcr.csv','pairs.csv','resonance.csv')}
     data = {name[:-4]:frame for name,frame in data.items()}
+    video = read_raw('video_resonance.csv')
+    if not video.empty:
+        scan = data['resonance']
+        # Максимум из журнала оставляем для независимого сравнения.
+        data['resonance'] = pd.concat([scan[~scan.R_ohm.isin(video.R_ohm)],
+                                      video.reindex(columns=scan.columns)],ignore_index=True)
     # Каждая строка журнала задаёт одну пару крайних пиков через n периодов.
     journal = read_raw('journal_decay.csv')
     for row in journal.itertuples():
@@ -133,6 +140,18 @@ def main():
             frame[['sx','sy']] = errors[frame.index]
             tex.add_text('has'+key,'1')
         write_processed(frame,key+'.csv',['x','y','sx','sy'])
+    for name in ('period','critical'):
+        frame = pd.DataFrame(curves[name], columns=['x','y']).dropna()
+        if len(frame) < 3 or frame.x.nunique() < 2:
+            continue
+        k, sk, b, sb = lsq(frame.x,frame.y)
+        tex.add(name+'Slope',k,sk)
+        tex.add(name+'Intercept',b,sb)
+        limits = np.array([frame.x.min(),frame.x.max()])
+        line = pd.DataFrame({'x':limits,'y':k*limits+b})
+        write_processed(line,name+'_fit.csv',['x','y'])
+        if name == 'critical' and k > 0:
+            tex.add('criticalFit',2*pi*np.sqrt(k),pi*sk/np.sqrt(k))
     peaks = read_raw('image_peaks.csv')
     for series in read_raw('photo_series.csv').itertuples():
         trace = peaks[peaks.source == series.source].sort_values('x_peak_px')
