@@ -142,11 +142,12 @@ $\Theta=n^{-1}\ln[(U_0-U_k)/(U_0-U_{k+n})]$, на спаде --- формулу 
 \caption{Осциллограммы и настройки генератора в режиме цугов.}\end{figure}
 \paragraph{Погрешности и сопоставление (пп. 2.7.12--13).} Для результата $F$ использовать $u^2(F)=\sum_{ij}(\partial_i F)(\partial_j F)\operatorname{cov}(x_i,x_j)$. При обработке роста брать $U_0$ одним общим аргументом для обеих разностей. Для ширины кривой учитывать ошибки частот и вертикальных отсчётов через локальный наклон, для АЧХ также общий уровень нормировки. Разброс независимых пар учитывать по стандартной ошибке среднего. Относительная погрешность равна $100u(Q)/Q$.
 \begin{table}[H]\centering\small\caption{Добротность контура (безразмерная) для двух настроек сопротивления.}
-\begin{tabular}{c|ccc|cccc}
- &\multicolumn{3}{c|}{Свободные колебания}&\multicolumn{4}{c}{Вынужденные колебания}\\
-$R$ & Расчёт & Разряд & Спираль & АЧХ & ФЧХ & Рост & Спад\\\hline
-$R_1$ & \res{calc1} & \res{free1} & \res{spiral1} & \res{ach1} & \res{phase1} & \res{rise1} & \res{fall1} \\
-$R_2$ & \res{calc2} & \res{free2} & \res{spiral2} & \res{ach2} & \res{phase2} & \res{rise2} & \res{fall2} \\
+\newcommand{\cellres}[1]{\ifcsname res@#1\endcsname\res{#1}\else--\fi}
+\begin{tabular}{c|cc|cccc}
+ &\multicolumn{2}{c|}{Свободные колебания}&\multicolumn{4}{c}{Вынужденные колебания}\\
+$R$ & Расчёт & Разряд & АЧХ & ФЧХ & Рост & Спад\\\hline
+$R_1$ & \res{calc1} & \res{free1} & \res{ach1} & \res{phase1} & \res{rise1} & \res{fall1} \\
+$R_2$ & \res{calc2} & \res{free2} & \cellres{ach2} & \cellres{phase2} & \cellres{rise2} & \cellres{fall2} \\
 \end{tabular}\end{table}
 \newcommand{\series}[2]{\ifcsname res@has#1\endcsname
 \addplot+[only marks,#2,error bars/.cd,x dir=both,x explicit,y dir=both,y explicit] table[col sep=comma,x=x,y=y,x error=sx,y error=sy]{../data/processed/#1.csv};\fi}
@@ -155,12 +156,14 @@ $R_2$ & \res{calc2} & \res{free2} & \res{spiral2} & \res{ach2} & \res{phase2} & 
 \begin{figure}[H]\centering
 \chart{$T_0$, мкс}{$T_{\textrm{эксп}}$, мкс}{period}{\fitline{period}}
 \chart{$1/R_\Sigma^2$, Ом$^{-2}$}{$1/\Theta^2$}{critical}{\fitline{critical}}\\
+{\pgfplotsset{every axis plot/.append style={mark size=1pt}}
 \chart{$\nu/\nu_{\textrm{рез}}$}{$U/U_{\textrm{рез}}$}{amp1}{\series{amp2}{red}}
+\pgfplotsset{every axis/.append style={ymin=0,ymax=3.141593,ytick={0,0.785398,1.570796,2.356194,3.141593},yticklabels={$0$,$\pi/4$,$\pi/2$,$3\pi/4$,$\pi$}}}
 \ifcsname res@hasph1\endcsname
 \chart{$\omega$, рад/с}{$\varphi$, рад}{ph1}{\series{ph2}{red}}
 \else\ifcsname res@hasph2\endcsname
 \chart{$\omega$, рад/с}{$\varphi$, рад}{ph2}{}
-\else\begin{minipage}{.48\linewidth}\centering\small Фазочастотная характеристика\\[2mm]Для построения нужны пары\\ «частота --- задержка».\end{minipage}\fi\fi
+\else\begin{minipage}{.48\linewidth}\centering\small Фазочастотная характеристика\\[2mm]Для построения нужны пары\\ «частота --- задержка».\end{minipage}\fi\fi}
 \caption{Периоды, декременты и резонансные кривые. Вверху показаны все семь точек каждой серии и прямые МНК. Внизу показаны АЧХ и ФЧХ по видеозаписи при $R_1=410$~Ом. Фаза отсчитана относительно синего сигнала генератора.}\end{figure}
 
 \newcommand{\envelope}[2]{\ifcsname res@hasenv#1\endcsname

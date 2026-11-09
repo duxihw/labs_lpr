@@ -23,6 +23,31 @@ CROPS = {2489:('setup.jpg',(0,0,400,300)),2490:('spiral.png',(31,143,115,216)),
          2502:('burst_fast.jpg',(27,35,367,274)),2503:('burst_detail.jpg',(56,57,347,279))}
 
 
+def burst_extrema(photo, scale):
+    """В каждом полупериоде берём край яркой трассы, исключая ореол и сетку."""
+    r,g,b = np.asarray(photo,dtype=float).transpose(2,0,1)
+    mask = (r>195) & (g>175) & (np.minimum(r,g)-b>38)
+    def edge(x, upper):
+        left,right = [round((x+d)*scale) for d in (-2.8,2.8)]
+        top = round(88*scale)
+        ys,xs = np.where(mask[top:round(205*scale),left:right])
+        if not len(ys):
+            return None
+        limit = np.percentile(ys,1 if upper else 99)
+        use = abs(ys-limit)<=2
+        return ((left+np.median(xs[use]))/scale,(top+np.median(ys[use]))/scale)
+    first,period = 105.7,8.28
+    peaks = [edge(first+i*period,True) for i in range(28)]
+    for i,(a,b) in enumerate(zip(peaks,peaks[1:])):
+        low = edge(first+(i+.5)*period,False)
+        if a is None or b is None or low is None:
+            continue
+        half = (low[1]-(a[1]+b[1])/2)/2
+        if half < 1:
+            break
+        yield ('IMG_2496.HEIC',*(round(v,2) for v in (*a,*low,b[0],half)))
+
+
 def main(source):
     records = []
     for number,(name,box) in CROPS.items():
@@ -37,6 +62,9 @@ def main(source):
                 if number == 2490:
                     photo.crop(tuple(round(v*scale) for v in (30,97,211,144))).save(IMG/'free.png')
                 if number not in REGIONS:
+                    continue
+                if number == 2496:
+                    records.extend(burst_extrema(photo,scale))
                     continue
                 x1,y1,x2,y2,period = REGIONS[number]
                 rgb = np.asarray(photo).astype(float)
