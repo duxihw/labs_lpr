@@ -187,6 +187,37 @@ def main():
             (slope,_),cov = np.polyfit((x-x[0])/period_px,np.log(decay.half_range_px),1,cov=True)
             tex.add('photoTheta',-slope,np.sqrt(cov[0,0]))
             tex.add('fall1',-pi/slope,pi*np.sqrt(cov[0,0])/slope**2)
+    extrema = read_raw('IMG_2502_extrema.csv')
+    if not extrema.empty:
+        plateau = extrema[extrema.part=='plateau']
+        zero = extrema[extrema.part=='zero']
+        # Смещение нулевой линии из-за наклона кадра.
+        baseline = np.interp(extrema.x_px,zero.x_px,zero.y_px)
+        height = baseline-extrema.y_px
+        steady = height[extrema.part=='plateau'].median()
+        period = np.median(np.diff(plateau.x_px))
+        for mode in ('rise','fall'):
+            region = extrema[extrema.part==mode].iloc[:2]
+            peak = height.loc[region.index].to_numpy()
+            # Рост привязан к времени в периодах генератора. На спаде взяты
+            # два последовательных одноимённых пика свободного колебания.
+            if mode=='rise':
+                a,b = steady-peak
+                cycles = np.diff(region.x_px)[0]/period
+            else:
+                a,b = abs(peak)
+                cycles = 1
+            theta = np.log(a/b)/cycles
+            # Условная ошибка считывания 2 пикселя по каждой координате:
+            # две вершины и общий опорный уровень (плато или ноль).
+            log_error = 2*np.sqrt(a**-2+b**-2+(1/a-1/b)**2)
+            relative = log_error/np.log(a/b)
+            if mode=='rise':
+                relative = np.hypot(relative,2*np.sqrt(2)/np.diff(region.x_px)[0])
+            tex.add(mode+'2',pi/theta,pi/theta*relative)
+            tex.add(mode+'First',a)
+            tex.add(mode+'Second',b)
+            tex.add(mode+'Cycles',cycles)
     tex.save()
 
 
