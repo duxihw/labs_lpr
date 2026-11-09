@@ -2,6 +2,7 @@
 from collections import defaultdict
 import numpy as np
 import pandas as pd
+from scipy.optimize import curve_fit
 from lab_utils import read_params, read_raw, write_processed, TexResults
 
 pi = np.pi
@@ -59,19 +60,23 @@ def calculate(data, params):
         results[f'calc{i}'] = np.sqrt(L/C)/(R+RL)
         scan = data['resonance']
         scan = scan[scan.R_ohm == R].sort_values('f_Hz')
-        if len(scan) < 3:
-            continue
-        f, u, delay = scan[['f_Hz','Upp_V','delay_us']].to_numpy().T
-        phase = -2*pi*f*delay*1e-6
-        k = np.argmax(u)
-        amplitude = u/u[k]
-        curves[f'amp{i}'] = list(zip(f/f[k],amplitude))
-        curves[f'ph{i}'] = list(zip(2*pi*f,phase))
-        lo = crossing(f[:k+1][::-1],amplitude[:k+1][::-1],2**-.5)
-        hi = crossing(f[k:],amplitude[k:],2**-.5)
-        results[f'ach{i}'] = f[k]/(hi-lo)
-        lo,mid,hi = [crossing(f,phase,-j*pi/4) for j in (1,2,3)]
-        results[f'phase{i}'] = mid/(hi-lo)
+        amplitude_scan = scan.dropna(subset=['f_Hz','Upp_V'])
+        if len(amplitude_scan):
+            f,u = amplitude_scan[['f_Hz','Upp_V']].to_numpy().T
+            k = np.argmax(u)
+            amplitude = u/u[k]
+            curves[f'amp{i}'] = list(zip(f/f[k],amplitude))
+            if 0 < k < len(f)-1:
+                lo = crossing(f[:k+1][::-1],amplitude[:k+1][::-1],2**-.5)
+                hi = crossing(f[k:],amplitude[k:],2**-.5)
+                results[f'ach{i}'] = f[k]/(hi-lo)
+        phase_scan = scan.dropna(subset=['f_Hz','delay_us'])
+        if len(phase_scan):
+            f,delay = phase_scan[['f_Hz','delay_us']].to_numpy().T
+            phase = -2*pi*f*delay*1e-6
+            curves[f'ph{i}'] = list(zip(2*pi*f,phase))
+            lo,mid,hi = [crossing(f,phase,-j*pi/4) for j in (1,2,3)]
+            results[f'phase{i}'] = mid/(hi-lo)
     return results, curves
 
 
@@ -129,6 +134,31 @@ def main():
             tex.add_text('has'+key,'1')
         write_processed(frame,key+'.csv',['x','y','sx','sy'])
     peaks = read_raw('image_peaks.csv')
+    for series in read_raw('photo_series.csv').itertuples():
+        trace = peaks[peaks.source == series.source].sort_values('x_peak_px')
+        if trace.empty:
+            continue
+        name = 'env'+series.source[4:8]
+        period = np.median(trace.x_next_peak_px-trace.x_peak_px)
+        # Середина измеренного цикла; ноль времени локален для каждого снимка.
+        middle = (trace.x_peak_px+trace.x_next_peak_px)/2
+        frame = pd.DataFrame({'x':(middle-middle.iloc[0])/period,
+                              'y':trace.half_range_px/trace.half_range_px.max()})
+        write_processed(frame,name+'.csv',['x','y'])
+        tex.add_text('has'+name,'1')
+    # Участок роста между курсорным меню слева и ограничением трассы краем экрана справа.
+    growth = peaks[(peaks.source == 'IMG_2499.HEIC') & peaks.x_peak_px.between(107,217.5)]
+    if len(growth) >= 4:
+        period = np.median(growth.x_next_peak_px-growth.x_peak_px)
+        cycles = (growth.x_peak_px-growth.x_peak_px.min())/period
+        def buildup(n, plateau, deficit, theta):
+            return plateau-deficit*np.exp(-theta*n)
+        amp = growth.half_range_px.to_numpy()
+        params_fit,cov = curve_fit(buildup,cycles,amp,
+                                   p0=(amp.max()*1.05,amp.max()-amp.min(),0.35),
+                                   bounds=(0,np.inf))
+        theta = params_fit[2]
+        tex.add('rise1',pi/theta,pi*np.sqrt(cov[2,2])/theta**2)
     # Спад после выключения; первый цикл границы цуга и хвост у шума исключены.
     if not peaks.empty:
         decay = peaks[(peaks.source == 'IMG_2500.HEIC') & peaks.x_peak_px.between(130,272)]
@@ -137,7 +167,7 @@ def main():
             period_px = np.median(decay.x_next_peak_px-x)
             (slope,_),cov = np.polyfit((x-x[0])/period_px,np.log(decay.half_range_px),1,cov=True)
             tex.add('photoTheta',-slope,np.sqrt(cov[0,0]))
-            tex.add('photoQ',-pi/slope,pi*np.sqrt(cov[0,0])/slope**2)
+            tex.add('fall1',-pi/slope,pi*np.sqrt(cov[0,0])/slope**2)
     tex.save()
 
 

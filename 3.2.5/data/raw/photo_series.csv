@@ -1,0 +1,7 @@
+# Привязка осциллограмм по пояснениям автора. Частота биений указана как частота возбуждения, приближённо.
+source,R_ohm,mode,drive_kHz_approx
+IMG_2496.HEIC,410,burst,
+IMG_2499.HEIC,410,rise,
+IMG_2500.HEIC,410,fall,
+IMG_2502.HEIC,2000,burst,
+IMG_2503.HEIC,410,beats,5.7
