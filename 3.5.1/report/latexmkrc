@@ -1,0 +1,3 @@
+# CI invokes latexmk on main.tex and collects both reports from this folder.
+@default_files = ('main.tex', '351-ai.tex');
+push @ARGV, '351-ai.tex' if grep { $_ eq 'main.tex' } @ARGV;

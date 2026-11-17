@@ -1,309 +1,209 @@
-"""Обработка сырых данных лабораторной работы 3.5.1.
-
-    «Изучение плазмы газового разряда в неоне»
-
-Читает   data/raw/{setup_params,discharge_iv,probe_iv}.csv
-Пишет    data/processed/*.csv  (в том числе fit_results.csv со всеми итогами)
-         data/processed/probe_family.tex  (кривые семейства для pgfplots)
-Печатает сводку с промежуточными и окончательными результатами.
-
-Запуск (из каталога работы):
-    python scripts/process_data.py
-
-Сырые данные никогда не изменяются. Пока таблицы в data/raw/ пусты, скрипт
-ничего не пишет, а отчёт собирается с пустыми таблицами-заготовками.
-
-Формулы (методичка, раздел V):
-    k T_e = e I_iн / (2 dI/dU|_0)                          (5.26)
-    I_iн  = 0.4 n e S sqrt(2 k T_e / m_i),  S = pi d l     (5.22)
-    w_p   = sqrt(4 pi n e^2 / m_e)          [СГС]          (5.1)
-    r_De  = sqrt(k T_e / (4 pi n e^2)),  r_D ~ r_Di (T_i << T_e)   (5.9), (5.10)
-    N_D   = 4/3 pi n r_D^3                                  (5.13)
-    alpha = n / n_0,  n_0 = P / (k T)
-Расчёт ведётся в СИ, результаты переводятся в удобные единицы.
-"""
+"""Обработка работы 3.5.1. Запуск: python scripts/process_data.py."""
 
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from scipy.constants import atomic_mass, Boltzmann, elementary_charge, electron_mass, epsilon_0, torr
+from scipy.linalg import block_diag
 
-from lab_utils import (
-    PROC_DIR,
-    Results,
-    get_param,
-    lsq,
-    read_params,
-    read_raw,
-    write_processed,
-)
+from lab_utils import PROC_DIR, read_params, read_raw, write_processed
 
-# Физические константы (СИ)
-E = 1.602176634e-19      # Кл
-K_B = 1.380649e-23       # Дж/К
-EPS0 = 8.8541878128e-12  # Ф/м
-M_E = 9.1093837015e-31   # кг
-AMU = 1.66053906660e-27  # кг
-TORR = 133.322           # Па
-
-RES = Results()
+# Одинаковые окна для всех трёх режимов. Внутри окон напряжение задано в В.
+CENTRAL = 4.6
+TAIL = 16.0
 
 
-def header(title: str) -> None:
-    print("\n" + "=" * 70)
-    print(title)
-    print("=" * 70)
+def number(value, places=2):
+    return f"{value:.{places}f}".replace(".", "{,}")
 
 
-def sig(x: float, n: int = 3) -> float:
-    """Округление до n значащих цифр (для таблиц отчёта)."""
-    if x is None or not np.isfinite(x) or x == 0:
-        return x
-    return float(f"{x:.{n}g}")
+def measurement(value, sigma):
+    """Округление по двум значащим цифрам стандартной ошибки."""
+    if not np.isfinite(sigma) or sigma <= 0:
+        return "$" + number(value) + "$"
+    digits = 1 - int(np.floor(np.log10(sigma)))
+    value, sigma = round(value, digits), round(sigma, digits)
+    return "$" + number(value, max(0, digits)) + r"\pm" + number(sigma, max(0, digits)) + "$"
 
 
-def warn_default(params: dict, name: str, default: float, what: str) -> float:
-    value = get_param(params, name, default)
-    if name not in params or not np.isfinite(params.get(name, np.nan)):
-        print(f"  [!] {name} ({what}) не задан в setup_params.csv -> {default}")
-    return value
+def rows(name, values):
+    text = "\n".join(" & ".join(row) + r" \\" for row in values)
+    (PROC_DIR / name).write_text(text + "\n", encoding="utf-8")
 
 
-# --------------------------------------------------------------------------
-# 1. ВАХ тлеющего разряда
-# --------------------------------------------------------------------------
-def process_discharge(params: dict) -> None:
-    """п. 8: I_р(U_р), дифференциальное сопротивление R_диф = dU/dI."""
-    header("1. Вольт-амперная характеристика разряда")
-    df = read_raw("discharge_iv.csv")
-    if df.empty:
-        print("  нет данных")
+def straight_line(x, y):
+    if len(x) < 3 or len(np.unique(x)) < 2:
+        raise ValueError("Для МНК с оценкой дисперсии нужно минимум три точки и два разных напряжения/тока")
+    design = np.column_stack((x, np.ones_like(x)))
+    coefficients = np.linalg.lstsq(design, y, rcond=None)[0]
+    residual = y - design @ coefficients
+    variance = (residual @ residual) / (len(x) - 2)
+    covariance = variance * np.linalg.inv(design.T @ design)
+    return coefficients, covariance
+
+
+def process_discharge(params):
+    frame = read_raw("discharge_iv.csv")
+    if frame.empty:
         return
-
-    k_div = warn_default(params, "k_div", 1.0, "коэффициент делителя")
-    df["U_r_V"] = k_div * df["U_V1_V"].astype(float)
-    df["branch"] = df["branch"].astype(str).str.strip()
-
-    u_ign = get_param(params, "U_ign", np.nan)
-    u_ext = get_param(params, "U_ext", np.nan)
-    if np.isfinite(u_ign):
-        RES.add("U_ign", k_div * u_ign, unit="V", comment="напряжение зажигания")
-    if np.isfinite(u_ext):
-        RES.add("U_ext", k_div * u_ext, unit="V", comment="напряжение гашения")
-
-    out = []
-    for branch, part in df.groupby("branch", sort=False):
-        part = part.sort_values("I_mA").copy()
-        i = part["I_mA"].to_numpy(float)
-        u = part["U_r_V"].to_numpy(float)
-        # локальное дифференциальное сопротивление, В/мА = кОм
-        part["R_diff_kOhm"] = np.gradient(u, i) if len(i) >= 2 else np.nan
-        out.append(part)
-
-        k, sk, b, sb = lsq(i, u)
-        RES.add(f"R_diff_lsq_{branch}", k, sk, "kOhm",
-                f"наклон МНК U_р(I_р) по всей ветви '{branch}'")
-        if len(i) >= 2:
-            j = int(np.nanargmax(np.abs(part["R_diff_kOhm"].to_numpy())))
-            RES.add(f"R_diff_max_{branch}", part["R_diff_kOhm"].iloc[j],
-                    unit="kOhm", comment=f"max |dU/dI| на ветви '{branch}' "
-                                         f"при I_р = {i[j]:g} мА")
-
-    res = pd.concat(out)
-    res["U_r_V"] = res["U_r_V"].map(lambda x: sig(x, 4))
-    res["R_diff_kOhm"] = res["R_diff_kOhm"].map(lambda x: sig(x, 3))
-    cols = ["branch", "U_V1_V", "U_r_V", "I_mA", "R_diff_kOhm"]
-    write_processed(res, "discharge_iv_processed.csv", cols)
-    # отдельные файлы ветвей -- для pgfplots
-    for branch in ("up", "down"):
-        write_processed(res[res["branch"] == branch],
-                        f"discharge_iv_{branch}.csv", cols)
+    frame["U_r_V"] = params["k_div"] * frame["U_V1_V"]
+    summary, table, windows = [], [], []
+    for branch, group in frame.groupby("branch", sort=False):
+        group = group.sort_values("I_mA")
+        write_processed(group, f"discharge_iv_{branch}.csv")
+        # Несколько измерений при одном токе могут входить в одну оценку напряжения.
+        means = group.groupby("I_mA")["U_r_V"].mean()
+        current, voltage = means.index.to_numpy(float), means.to_numpy(float)
+        line_results = []
+        for j in range(len(current) - 2):
+            block = slice(j, j + 3)
+            (r, _), cov = straight_line(current[block], voltage[block])
+            line_results.append(dict(branch=branch, I_low=current[j], I_high=current[j + 2],
+                                     R_kOhm=r, sR_kOhm=np.sqrt(cov[0, 0])))
+        windows.extend(line_results)
+        steep = max(line_results, key=lambda row: abs(row["R_kOhm"]))
+        highest = max(line_results, key=lambda row: row["R_kOhm"])
+        summary.extend([dict(criterion=key, **row) for key, row in
+                        [("max_abs", steep), ("max_signed", highest)]])
+        cells = [{"up": "Рост", "down": "Спад"}.get(branch, branch)]
+        for row in (steep, highest):
+            cells += ["$" + number(row["I_low"]) + r"\ldots " + number(row["I_high"]) + "$",
+                      measurement(row["R_kOhm"], row["sR_kOhm"])]
+        table.append(cells)
+    write_processed(frame, "discharge_iv_processed.csv")
+    write_processed(pd.DataFrame(summary), "discharge_extrema.csv")
+    write_processed(pd.DataFrame(windows), "discharge_slopes.csv")
+    rows("discharge_rows.tex", table)
 
 
-# --------------------------------------------------------------------------
-# 2. Зондовые характеристики
-# --------------------------------------------------------------------------
-def tanh_fit(u: np.ndarray, i: np.ndarray, iin0: float, te0: float):
-    """Контрольная аппроксимация I = I_iн th(U / 2T_e) + A U  (T_e в вольтах)."""
-    try:
-        from scipy.optimize import curve_fit
-    except ImportError:
-        return np.nan, np.nan
-
-    def model(x, iin, te, a):
-        return iin * np.tanh(x / (2 * te)) + a * x
-
-    try:
-        p, cov = curve_fit(model, u, i, p0=[iin0, te0, 0.0], maxfev=20000)
-        return p[1], np.sqrt(cov[1, 1])
-    except (RuntimeError, ValueError):
-        return np.nan, np.nan
+def fit_regions(u, i, center, tail):
+    """Три независимые прямые по непересекающимся выборкам."""
+    masks = (u >= tail, u <= -tail, np.abs(u) <= center)
+    lines, covariances = zip(*(straight_line(u[m], i[m]) for m in masks))
+    return np.concatenate(lines), block_diag(*covariances)
 
 
-def process_one_probe(ip: float, part: pd.DataFrame, params: dict):
-    """Обработка одной зондовой характеристики при токе разряда ip (мА)."""
+def evaluate(coefficients, params):
+    pos, bp, neg, bn, slope, intercept = coefficients
+    # В новом начале центральная прямая пересекает среднюю линию асимптот.
+    u0 = ((bp + bn) / 2 - intercept) / (slope - (pos + neg) / 2)
+    i0 = slope * u0 + intercept
+    ion = ((pos - neg) * u0 + bp - bn) / 2
+    te = ion / (2 * slope)
+    if ion <= 0 or te <= 0:
+        raise ValueError("Неположительная энергия или ток насыщения: проверьте полярность и окна")
+    energy = elementary_charge * te
+    area = np.pi * params["d_probe"] * params["l_probe"] * 1e-6
+    density = ion * 1e-6 / (0.4 * elementary_charge * area * np.sqrt(2 * energy / (params["A_ion"] * atomic_mass)))
+    omega = np.sqrt(density * elementary_charge**2 / (epsilon_0 * electron_mass))
+    rde = np.sqrt(epsilon_0 * energy / (density * elementary_charge**2))
+    ti = params["T_gas"]
+    rd = np.sqrt(epsilon_0 * Boltzmann * ti / (density * elementary_charge**2))
+    nd = (4 * np.pi / 3) * density * rd**3
+    alpha = density * Boltzmann * ti / (params["P_gas"] * torr)
+    return dict(U_off_V=u0, I_off_uA=i0, Iin_uA=ion, dIdU_uA_V=slope,
+                Te_eV=te, Te_K=energy / Boltzmann, n_1e10_cm3=density / 1e16,
+                wp_1e9_rad_s=omega / 1e9, fp_MHz=omega / (2 * np.pi * 1e6),
+                rDe_um=rde * 1e6, rD_um=rd * 1e6, ND=nd, alpha_1e7=alpha * 1e7)
+
+
+def process_one_probe(ip, part, params):
     u = part["U_V"].to_numpy(float)
     i = part["I_uA"].to_numpy(float)
-    order = np.argsort(u)
-    u, i = u[order], i[order]
-    u_max = np.nanmax(np.abs(u))
-
-    u_asym = get_param(params, "U_asym", 0.5 * u_max)
-    u_lin = get_param(params, "U_lin", 0.1 * u_max)
-
-    # а) асимптоты при U -> +U_max и U -> -U_max; их пересечения с осью U = 0
-    pos, neg = u > u_asym, u < -u_asym
-    k_p, sk_p, b_p, sb_p = lsq(u[pos], i[pos])
-    k_n, sk_n, b_n, sb_n = lsq(u[neg], i[neg])
-    i_off = 0.5 * (b_p + b_n)                    # смещение нуля тока
-    iin = 0.5 * (b_p - b_n)
-    s_iin = 0.5 * np.hypot(sb_p, sb_n)
-
-    # центрирование: сдвиг по току на i_off и по напряжению так, чтобы I(0) = 0
-    i_c = i - i_off
-    u_off = np.interp(0.0, i_c, u) if np.all(np.diff(i_c) > 0) else 0.0
-    u_c = u - u_off
-
-    # б) наклон в начале координат
-    lin = np.abs(u_c) < u_lin
-    k0, sk0, b0, sb0 = lsq(u_c[lin], i_c[lin])   # мкА/В
-
-    # T_e: k T_e = e I_iн / (2 dI/dU)  ->  в эВ: I_iн[мкА] / (2 k0[мкА/В])
-    te = iin / (2 * k0)
-    s_te = te * np.hypot(s_iin / iin, sk0 / k0)
-    te_fit, s_te_fit = tanh_fit(u_c, i_c, iin, te if np.isfinite(te) else 3.0)
-
-    print(f"  I_р = {ip:g} мА: U_max = {u_max:g} В, асимптоты |U| > {u_asym:g} В, "
-          f"наклон по |U| < {u_lin:g} В")
-    print(f"    смещение: dI = {i_off:.3g} мкА, dU = {u_off:.3g} В; "
-          f"наклоны асимптот {k_p:.3g}, {k_n:.3g} мкА/В")
-
-    centered = pd.DataFrame({"Ip_mA": ip, "U_c_V": u_c, "I_c_uA": i_c})
-    row = {
-        "Ip_mA": ip,
-        "Iin_uA": iin, "sIin_uA": s_iin,
-        "dIdU_uA_V": k0, "sdIdU_uA_V": sk0,
-        "Te_eV": te, "sTe_eV": s_te,
-        "Te_fit_eV": te_fit, "sTe_fit_eV": s_te_fit,
-        "asym_slope_pos": k_p, "asym_slope_neg": k_n,
-        "U_lin_V": u_lin, "U_asym_V": u_asym,
-        # для графиков plot_data.py (в центрированных координатах)
-        "asym_b_pos": b_p - i_off + k_p * u_off, "asym_b_neg": b_n - i_off + k_n * u_off,
-        "U_off_V": u_off, "I_off_uA": i_off,
-    }
-    return centered, row
+    coefs, cov = fit_regions(u, i, CENTRAL, TAIL)
+    result = evaluate(coefs, params)
+    # Полная ковариация наклонов и свободных членов. Центральная разность
+    # берётся по каждому из шести коэффициентов в его исходных единицах.
+    gradients = []
+    for index, value in enumerate(coefs):
+        step = 1e-5 * max(1, abs(value))
+        delta = np.zeros_like(coefs)
+        delta[index] = step
+        above, below = evaluate(coefs + delta, params), evaluate(coefs - delta, params)
+        gradients.append([(above[key] - below[key]) / (2 * step) for key in result])
+    jacobian = np.array(gradients).T
+    sigmas = np.sqrt(np.maximum(0, np.diag(jacobian @ cov @ jacobian.T)))
+    errors = {"s" + key: sigma for key, sigma in zip(result, sigmas)}
+    pos, bp, neg, bn, slope, _ = coefs
+    row = dict(Ip_mA=ip, **result, **errors, asym_slope_pos=pos, asym_slope_neg=neg,
+               asym_b_pos=result["Iin_uA"], asym_b_neg=-result["Iin_uA"], U_lin_V=CENTRAL,
+               U_asym_V=TAIL, n_pos=int(sum(u >= TAIL)), n_neg=int(sum(u <= -TAIL)),
+               n_central=int(sum(abs(u) <= CENTRAL)))
+    frame = pd.DataFrame(dict(Ip_mA=ip, U_c_V=u - result["U_off_V"], I_c_uA=i - result["I_off_uA"]))
+    return frame.sort_values("U_c_V"), row
 
 
-def plasma_parameters(row: dict, params: dict) -> dict:
-    """п. 11-14: n_e, w_p, r_De, r_D, N_D, alpha по I_iн и T_e."""
-    d = warn_default(params, "d_probe", np.nan, "диаметр зонда") * 1e-3
-    l = warn_default(params, "l_probe", np.nan, "длина зонда") * 1e-3
-    sd = params.get("d_probe__sigma", np.nan)
-    a_ion = get_param(params, "A_ion", 22.0)
-    p_gas = get_param(params, "P_gas", 2.0) * TORR
-    t_gas = get_param(params, "T_gas", 300.0)
-
-    s = np.pi * d * l                         # м^2
-    m_i = a_ion * AMU
-    iin = row["Iin_uA"] * 1e-6                # А
-    kte = row["Te_eV"] * E                    # Дж
-
-    n = iin / (0.4 * E * s * np.sqrt(2 * kte / m_i))       # м^-3
-    rel_n = np.hypot(row["sIin_uA"] / row["Iin_uA"],
-                     0.5 * row["sTe_eV"] / row["Te_eV"])
-    if np.isfinite(sd):
-        rel_n = np.hypot(rel_n, sd / (d * 1e3))
-    wp = np.sqrt(n * E**2 / (EPS0 * M_E))                  # рад/с
-    r_de = np.sqrt(EPS0 * kte / (n * E**2))                # м
-    r_di = np.sqrt(EPS0 * K_B * t_gas / (n * E**2))        # м
-    r_d = (r_de**-2 + r_di**-2) ** -0.5                    # (5.10)
-    n_d = 4 / 3 * np.pi * n * r_d**3
-    n0 = p_gas / (K_B * t_gas)                             # м^-3
-    alpha = n / n0
-
-    return {
-        "Ip_mA": row["Ip_mA"],
-        "Te_eV": sig(row["Te_eV"]), "sTe_eV": sig(row["sTe_eV"], 2),
-        "Te_K": sig(row["Te_eV"] * E / K_B),
-        "n_1e10_cm3": sig(n * 1e-6 / 1e10), "sn_1e10_cm3": sig(n * 1e-6 / 1e10 * rel_n, 2),
-        "wp_1e9_rad_s": sig(wp / 1e9),
-        "rDe_um": sig(r_de * 1e6),
-        "rD_um": sig(r_d * 1e6),
-        "ND": sig(n_d),
-        "alpha_1e7": sig(alpha * 1e7),
-    }
+def plot_lines(index, frame, row):
+    ion, slope = row["Iin_uA"], row["dIdU_uA_V"]
+    u_min, u_max = frame["U_c_V"].min(), frame["U_c_V"].max()
+    lines = []
+    for start, end, a, b, style in [
+        (0, u_max, row["asym_slope_pos"], ion, "dashed"),
+        (u_min, 0, row["asym_slope_neg"], -ion, "dashed"),
+        (-ion / slope, ion / slope, slope, 0, "solid"),
+    ]:
+        lines.append(fr"\addplot[thin,black,{style},no marks,forget plot] coordinates "
+                     f"{{({start:.8f},{a * start + b:.8f}) ({end:.8f},{a * end + b:.8f})}};")
+    (PROC_DIR / f"probe_lines_{index}.tex").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def write_family_tex(groups: list[tuple[float, str]]) -> None:
-    """Генерирует \\addplot-команды семейства зондовых ВАХ для pgfplots."""
-    marks = ["*", "square*", "triangle*", "diamond*", "pentagon*", "o", "square"]
-    lines = ["% Сгенерировано scripts/process_data.py -- вручную не править"]
-    for k, (ip, fname) in enumerate(groups):
-        ip_tex = f"{ip:g}".replace(".", "{,}")
-        lines += [
-            f"\\addplot+[mark={marks[k % len(marks)]}, mark size=1.5pt, thin]",
-            f"    table[col sep=comma, x=U_c_V, y=I_c_uA] {{../data/processed/{fname}}};",
-            f"\\addlegendentry{{$I_{{\\text{{р}}}} = {ip_tex}$~мА}}",
-        ]
-    (PROC_DIR / "probe_family.tex").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print("  -> data/processed/probe_family.tex")
-
-
-def process_probes(params: dict) -> None:
-    header("2. Зондовые характеристики двойного зонда")
-    df = read_raw("probe_iv.csv")
-    if df.empty:
-        print("  нет данных")
-        return
-
-    rows, plasma, groups = [], [], []
-    for k, (ip, part) in enumerate(sorted(df.groupby("Ip_mA"), key=lambda g: -g[0])):
-        centered, row = process_one_probe(float(ip), part, params)
-        rows.append(row)
-        fname = f"probe_centered_{k + 1}.csv"
-        write_processed(centered.round(5), fname)
-        groups.append((float(ip), fname))
-
-        RES.add(f"Iin(Ip={ip:g})", row["Iin_uA"], row["sIin_uA"], "uA", "ионный ток насыщения")
-        RES.add(f"dI/dU(Ip={ip:g})", row["dIdU_uA_V"], row["sdIdU_uA_V"], "uA/V", "наклон в нуле")
-        RES.add(f"Te(Ip={ip:g})", row["Te_eV"], row["sTe_eV"], "eV", "по (5.26)")
-        RES.add(f"Te_fit(Ip={ip:g})", row["Te_fit_eV"], row["sTe_fit_eV"], "eV",
-                "контроль: МНК по I = I_iн th(U/2T_e) + AU")
-        plasma.append(plasma_parameters(row, params))
-
-    write_family_tex(groups)
-
-    res = pd.DataFrame(rows)
-    table = pd.DataFrame({
-        "Ip_mA": res["Ip_mA"],
-        "Iin_uA": res["Iin_uA"].map(sig), "sIin_uA": res["sIin_uA"].map(lambda x: sig(x, 2)),
-        "dIdU_uA_V": res["dIdU_uA_V"].map(sig), "sdIdU_uA_V": res["sdIdU_uA_V"].map(lambda x: sig(x, 2)),
-        "Te_eV": res["Te_eV"].map(sig), "sTe_eV": res["sTe_eV"].map(lambda x: sig(x, 2)),
-        "Te_fit_eV": res["Te_fit_eV"].map(sig),
-    })
-    write_processed(table, "probe_results.csv")
-    pl = pd.DataFrame(plasma)
-    write_processed(pl, "plasma_params.csv")
-
-    print("\n  Параметры плазмы:")
-    print(pl.to_string(index=False))
-
-
-def main() -> None:
+def main():
     params = read_params()
-    # погрешности параметров установки (столбец sigma) -- в params как <name>__sigma
-    raw = read_raw("setup_params.csv")
-    if not raw.empty and "sigma" in raw.columns:
-        for _, r in raw.iterrows():
-            try:
-                params[f"{str(r['param']).strip()}__sigma"] = float(r["sigma"])
-            except (TypeError, ValueError):
-                pass
-
     process_discharge(params)
-    process_probes(params)
-    RES.save()
-    print("\nГотово.")
+    probe = read_raw("probe_iv.csv")
+    if probe.empty:
+        return
+    results, checks, diagnostics, family = [], [], [], []
+    probe_rows, base_rows, debye_rows, plasma_rows = [], [], [], []
+    for index, (ip, group) in enumerate(sorted(probe.groupby("Ip_mA"), reverse=True), 1):
+        frame, row = process_one_probe(ip, group, params)
+        results.append(row)
+        filename = f"probe_centered_{index}.csv"
+        write_processed(frame, filename)
+        plot_lines(index, frame, row)
+        mark = ("*", "square*", "triangle*")[(index - 1) % 3]
+        family.append(fr"\addplot+[only marks,mark={mark},mark size=1.4pt] "
+                      fr"table[col sep=comma,x=U_c_V,y=I_c_uA] {{../data/processed/{filename}}};")
+        family.append(r"\addlegendentry{$" + number(ip, 2) + r"$ мА}")
+        ip_cell = "$" + number(ip) + "$"
+        def cells(keys):
+            return [measurement(row[k], row["s" + k]) for k in keys]
+        probe_rows.append([ip_cell] + cells(["Iin_uA", "dIdU_uA_V", "Te_eV"]) +
+                          ["$" + number(100 * row["sTe_eV"] / row["Te_eV"], 1) + "$"])
+        base = [ip_cell, measurement(row["Te_K"] / 1e3, row["sTe_K"] / 1e3)] + cells(
+            ["n_1e10_cm3", "wp_1e9_rad_s", "fp_MHz"])
+        debye = [ip_cell] + cells(["rDe_um", "rD_um", "ND", "alpha_1e7"])
+        base_rows.append(base)
+        debye_rows.append(debye)
+        plasma_rows.append(base[:-1] + debye[1:])
+        for center, tail in [(3.0, TAIL), (6.5, TAIL), (CENTRAL, 15), (CENTRAL, 18)]:
+            cc, _ = fit_regions(group["U_V"].to_numpy(), group["I_uA"].to_numpy(), center, tail)
+            checks.append(dict(Ip_mA=ip, center_V=center, tail_V=tail, Te_eV=evaluate(cc, params)["Te_eV"]))
+        if {"quality", "polarity"}.issubset(group.columns):
+            clear = group.loc[group["quality"] != "uncertain"]
+            coefs, _ = fit_regions(clear["U_V"].to_numpy(), clear["I_uA"].to_numpy(), CENTRAL, TAIL)
+            central = group.loc[group["U_V"].abs() <= CENTRAL]
+            # Один наклон и два независимых пересечения с осью тока.
+            design = np.column_stack((central["U_V"], central["polarity"] == "+", central["polarity"] == "-"))
+            (slope, plus, minus), _, rank, _ = np.linalg.lstsq(design, central["I_uA"], rcond=None)
+            if rank != 3 or slope <= 0:
+                raise ValueError("Не определён общий наклон двух полярностей")
+            diagnostics.append(dict(Ip_mA=ip, n_uncertain=len(group) - len(clear),
+                                    Te_clear_eV=evaluate(coefs, params)["Te_eV"],
+                                    slope_separate_uA_V=slope, intercept_plus_uA=plus, intercept_minus_uA=minus,
+                                    Te_separate_eV=row["Iin_uA"] / (2 * slope)))
+    (PROC_DIR / "probe_family.tex").write_text("\n".join(family) + "\n", encoding="utf-8")
+    full = pd.DataFrame(results)
+    write_processed(full, "probe_results.csv")
+    write_processed(full[["Ip_mA"] + [field for key in ("Te_eV", "Te_K", "n_1e10_cm3",
+        "wp_1e9_rad_s", "fp_MHz", "rDe_um", "rD_um", "ND", "alpha_1e7")
+        for field in (key, "s" + key)]], "plasma_params.csv")
+    write_processed(pd.DataFrame(checks), "probe_window_check.csv")
+    write_processed(pd.DataFrame(diagnostics), "probe_quality_check.csv")
+    for name, table in (("probe_rows", probe_rows), ("plasma_base_rows", base_rows),
+                        ("plasma_debye_rows", debye_rows), ("plasma_rows", plasma_rows)):
+        rows(name + ".tex", table)
 
 
 if __name__ == "__main__":
