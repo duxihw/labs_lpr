@@ -208,3 +208,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+    import sys
+    from ai_uncertainty import generate
+    generate(read_params(), sys.modules[__name__])

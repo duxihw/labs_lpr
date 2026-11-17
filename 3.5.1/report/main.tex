@@ -9,8 +9,13 @@
 \setlength{\headheight}{30pt}
 \setlength{\parskip}{3pt}
 \setlength{\emergencystretch}{2em}
+\ifdefined\AIAppendix
+\def\resultprefix{ai_}
+\else
+\def\resultprefix{}
+\fi
 \makeatletter
-\newcommand{\inputrows}[1]{\@@input "../data/processed/#1" }
+\newcommand{\inputrows}[1]{\@@input "../data/processed/\resultprefix#1" }
 \makeatother
 \newcommand{\proc}[1]{../data/processed/#1}
 \newcommand{\Ip}{I_{\text{р}}}
@@ -29,11 +34,22 @@
   \begin{axis}[lab,width=.49\linewidth,height=4.85cm,
     title={$\Ip=#2$ мА},title style={font=\small},xlabel={$U'$, В},ylabel={$I'$, мкА},
     xmin=-28,xmax=28,xtick={-20,0,20}]
+\ifdefined\AIAppendix
+  \addplot[only marks,mark=*,labblue,mark size=1.2pt,probeerrors] table[col sep=comma,x=U_c_V,y=I_c_uA,x error=sU_c_V,y error=sI_c_uA]{\proc{ai_probe_centered_#1.csv}};
+\else
   \addplot[only marks,mark=*,labblue,mark size=1.2pt] table[col sep=comma,x=U_c_V,y=I_c_uA]{\proc{probe_centered_#1.csv}};
+\fi
   \input{\proc{probe_lines_#1.tex}}
   \end{axis}
   \end{tikzpicture}}
+\ifdefined\AIAppendix
+\pgfplotsset{
+ probeerrors/.style={error bars/.cd,x dir=both,x explicit,y dir=both,y explicit},
+}
 \begin{document}
+\else
+\begin{document}
+\fi
 
 \begin{titlepage}
 \centering
@@ -117,19 +133,43 @@ $f_p=\omega_p/(2\pi)$. В модели однородной немагнитно
 На аноде~II снимали обе полярности ВАХ двойного зонда примерно от $-25$ до
 $+25$~В при $\Ip=1{,}50$, $3{,}00$ и $4{,}99$~мА [2, с.~1--3].
 
+\ifdefined\AIAppendix
+\begin{figure}[h!]\centering
+\includegraphics[width=.92\linewidth,height=.53\textheight,keepaspectratio]{img/setup.png}
+\caption{Фотография установки, предоставленная автором. На табличке у трубки
+указаны диаметр зонда 0,2 мм и длина 5,2 мм.}
+\end{figure}
+\clearpage
+\input{ai-errors.tex}
 \section{ВАХ разряда}
+\else
+\section{ВАХ разряда}
+\fi
 Для каждой ветви восстановлено $\Up=10U_{V_1}$. На \cref{fig:dis}
 по горизонтали отложено напряжение на трубке. На большей части диапазона
 точки прямого и обратного хода близки друг к другу.
+\ifdefined\AIAppendix
+Кресты на графике показывают стандартные неопределённости показаний
+по принятой модели отсчёта и общей шкалы прибора.
+\else
 Классы точности приборов, пределы погрешности и допуск делителя в источниках
 не приведены. На графиках отдельных отсчётов показаны исходные точки.
+\fi
 \begin{figure}[h!]\centering
 \begin{tikzpicture}
 \begin{axis}[lab,width=.76\linewidth,height=6.2cm,xlabel={$\Up$, В},
  ylabel={$\Ip$, мА},xmin=278,xmax=355,legend pos=north east]
+\ifdefined\AIAppendix
+\addplot[only marks,mark=o,labblue,mark size=2.2pt,probeerrors] table[col sep=comma,x=U_r_V,y=I_mA,x error=sU_r_V,y error=sI_mA]{\proc{ai_discharge_iv_up.csv}};
+\else
 \addplot[only marks,mark=o,labblue,mark size=2.2pt] table[col sep=comma,x=U_r_V,y=I_mA]{\proc{discharge_iv_up.csv}};
+\fi
 \addlegendentry{повышение тока}
+\ifdefined\AIAppendix
+\addplot[only marks,mark=+,labred,mark size=2.6pt,probeerrors] table[col sep=comma,x=U_r_V,y=I_mA,x error=sU_r_V,y error=sI_mA]{\proc{ai_discharge_iv_down.csv}};
+\else
 \addplot[only marks,mark=+,labred,mark size=2.6pt] table[col sep=comma,x=U_r_V,y=I_mA]{\proc{discharge_iv_down.csv}};
+\fi
 \addlegendentry{понижение тока}
 \end{axis}
 \end{tikzpicture}
@@ -159,7 +199,13 @@ $+25$~В при $\Ip=1{,}50$, $3{,}00$ и $4{,}99$~мА [2, с.~1--3].
 В нормальном режиме напряжение менялось бы мало. Балласт
 стабилизирует рабочую точку при отрицательном дифференциальном сопротивлении.
 Локальный наклон по трём отсчётам чувствителен к округлению напряжения и тока;
+\ifdefined\AIAppendix
+его неопределённость включает разброс относительно прямой при одной степени
+свободы и распространение погрешностей обоих приборов. Окна экстремальных
+наклонов выбраны по номинальным данным; неопределённость выбора окна не оценивалась.
+\else
 его статистическая ошибка характеризует разброс относительно прямой при одной степени свободы. Инструментальные ошибки в эту оценку не входят.
+\fi
 
 \section{Обработка зондовых характеристик}
 Знак обеих координат восстановлен по положению П2. При почти нулевом
@@ -194,11 +240,23 @@ $\Ip$, мА & $\Is$, мкА & $g$, мкА/В & $\kb T_e$, эВ & $\sigma_{T}/T_e
 \begin{tikzpicture}
 \begin{axis}[lab,width=.80\linewidth,height=6.5cm,xlabel={$U'$, В},
  ylabel={$I'$, мкА},legend pos=north west,legend style={font=\footnotesize}]
+\ifdefined\AIAppendix
+\addplot[only marks,mark=triangle*,labgreen,mark size=1.6pt,probeerrors] table[col sep=comma,x=U_c_V,y=I_c_uA,x error=sU_c_V,y error=sI_c_uA]{\proc{ai_probe_centered_3.csv}};
+\else
 \addplot[only marks,mark=triangle*,labgreen,mark size=1.6pt] table[col sep=comma,x=U_c_V,y=I_c_uA]{\proc{probe_centered_3.csv}};
+\fi
 \addlegendentry{$1{,}50$ мА}
+\ifdefined\AIAppendix
+\addplot[only marks,mark=square*,labred,mark size=1.35pt,probeerrors] table[col sep=comma,x=U_c_V,y=I_c_uA,x error=sU_c_V,y error=sI_c_uA]{\proc{ai_probe_centered_2.csv}};
+\else
 \addplot[only marks,mark=square*,labred,mark size=1.35pt] table[col sep=comma,x=U_c_V,y=I_c_uA]{\proc{probe_centered_2.csv}};
+\fi
 \addlegendentry{$3{,}00$ мА}
+\ifdefined\AIAppendix
+\addplot[only marks,mark=*,labblue,mark size=1.5pt,probeerrors] table[col sep=comma,x=U_c_V,y=I_c_uA,x error=sU_c_V,y error=sI_c_uA]{\proc{ai_probe_centered_1.csv}};
+\else
 \addplot[only marks,mark=*,labblue,mark size=1.5pt] table[col sep=comma,x=U_c_V,y=I_c_uA]{\proc{probe_centered_1.csv}};
+\fi
 \addlegendentry{$4{,}99$ мА}
 \end{axis}\end{tikzpicture}
 \caption{Семейство зондовых характеристик в одной системе координат.}\label{fig:family}
@@ -234,18 +292,32 @@ $\Ip$, мА & $r_{De}$, мкм & $r_D$, мкм & $N_D$ & $\alpha$, $10^{-7}$\\ \
 \begin{figure}[h!]\centering
 \begin{tikzpicture}
 \begin{axis}[lab,width=.485\linewidth,height=5.5cm,xlabel={$\Ip$, мА},ylabel={$\kb T_e$, эВ},xmin=1,xmax=5.5]
+\ifdefined\AIAppendix
+\addplot[only marks,mark=*,labblue,error bars/.cd,y dir=both,y explicit,x dir=both,x explicit]
+ table[col sep=comma,x=Ip_mA,y=Te_eV,y error=sTe_eV,x error=sIp_mA]{\proc{ai_plasma_params.csv}};
+\else
 \addplot[only marks,mark=*,labblue,error bars/.cd,y dir=both,y explicit]
  table[col sep=comma,x=Ip_mA,y=Te_eV,y error=sTe_eV]{\proc{plasma_params.csv}};
+\fi
 \end{axis}
 \end{tikzpicture}\hfill
 \begin{tikzpicture}
 \begin{axis}[lab,width=.485\linewidth,height=5.5cm,xlabel={$\Ip$, мА},ylabel={$n_e$, $10^{10}$ см$^{-3}$},xmin=1,xmax=5.5]
+\ifdefined\AIAppendix
+\addplot[only marks,mark=square*,labred,error bars/.cd,y dir=both,y explicit,x dir=both,x explicit]
+ table[col sep=comma,x=Ip_mA,y=n_1e10_cm3,y error=sn_1e10_cm3,x error=sIp_mA]{\proc{ai_plasma_params.csv}};
+\else
 \addplot[only marks,mark=square*,labred,error bars/.cd,y dir=both,y explicit]
  table[col sep=comma,x=Ip_mA,y=n_1e10_cm3,y error=sn_1e10_cm3]{\proc{plasma_params.csv}};
+\fi
 \end{axis}
 \end{tikzpicture}
 \caption{Электронная температура в энергетических единицах и концентрация.
-Вертикальные отрезки показывают расчётную неопределённость.}\label{fig:trend}
+\ifdefined\AIAppendix
+Кресты показывают стандартные неопределённости тока разряда и рассчитанных параметров.
+\else
+Вертикальные отрезки показывают расчётную неопределённость.
+\fi}\label{fig:trend}
 \end{figure}
 \input{discussion.tex}
 
