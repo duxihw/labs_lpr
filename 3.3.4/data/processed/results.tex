@@ -1,27 +1,53 @@
-% Сгенерировано scripts/process_data.py -- вручную не править.
-\newcommand*{\ResK}{\textbf{???}}
-\newcommand*{\ResKb}{\textbf{???}}
-\newcommand*{\ResRH}{\textbf{???}}
-\newcommand*{\ResRHabs}{\textbf{???}}
-\newcommand*{\ResN}{\textbf{???}}
-\newcommand*{\ResNcm}{\textbf{???}}
-\newcommand*{\ResRtf}{\textbf{???}}
-\newcommand*{\ResRho}{\textbf{???}}
-\newcommand*{\ResRhoOhmCm}{\textbf{???}}
-\newcommand*{\ResSigma}{\textbf{???}}
-\newcommand*{\ResMu}{\textbf{???}}
-\newcommand*{\ResKrev}{\textbf{???}}
-\newcommand*{\ResUohm}{\textbf{???}}
-\newcommand*{\ResNu}{\textbf{???}}
-\newcommand*{\ResVT}{\textbf{???}}
-\newcommand*{\ResLambda}{\textbf{???}}
-\newcommand*{\ResD}{\textbf{???}}
-\newcommand*{\ResBmax}{\textbf{???}}
-\newcommand*{\ResCalibN}{\textbf{???}}
-\newcommand*{\ParA}{\textbf{???}}
-\newcommand*{\ParH}{\textbf{???}}
-\newcommand*{\ParL}{\textbf{???}}
-\newcommand*{\ParSN}{\textbf{???}}
-\newcommand*{\ParT}{295{,}0 \pm 2{,}0}
-\newcommand*{\ParMeff}{1{,}00}
-\newcommand*{\ParEpsB}{\textbf{???}}
+% Создано scripts/process_data.py.
+\newcommand*{\ResK}{0{,}41 \pm 0{,}03}
+\newcommand*{\RelK}{8{,}1}
+\newcommand*{\ResKrev}{0{,}374 \pm 0{,}017}
+\newcommand*{\RelKrev}{4{,}5}
+\newcommand*{\ResRHabs}{(6{,}2 \pm 0{,}6)\cdot10^{-4}}
+\newcommand*{\RelRH}{10{,}5}
+\newcommand*{\ResN}{(1{,}01 \pm 0{,}11)\cdot10^{22}}
+\newcommand*{\RelN}{10{,}5}
+\newcommand*{\ResNcm}{(1{,}01 \pm 0{,}11)\cdot10^{16}}
+\newcommand*{\RelNcm}{10{,}5}
+\newcommand*{\ResRtf}{1{,}75 \pm 0{,}21}
+\newcommand*{\RelRtf}{11{,}9}
+\newcommand*{\ResRho}{(1{,}49 \pm 0{,}23)\cdot10^{-3}}
+\newcommand*{\RelRho}{15{,}2}
+\newcommand*{\ResSigma}{670 \pm 100}
+\newcommand*{\RelSigma}{15{,}2}
+\newcommand*{\ResMu}{4200 \pm 500}
+\newcommand*{\RelMu}{12{,}1}
+\newcommand*{\ResMuSI}{0{,}42 \pm 0{,}05}
+\newcommand*{\RelMuSI}{12{,}1}
+\newcommand*{\SlopeRows}{\(0{,}2\) & \(-1\) & \(0{,}093 \pm 0{,}004\) \\
+\(0{,}3\) & \(-4\) & \(0{,}132 \pm 0{,}006\) \\
+\(0{,}4\) & \(-6\) & \(0{,}170 \pm 0{,}008\) \\
+\(0{,}5\) & \(-7\) & \(0{,}207 \pm 0{,}009\) \\
+\(0{,}6\) & \(-10\) & \(0{,}246 \pm 0{,}011\) \\
+\(0{,}7\) & \(-12\) & \(0{,}284 \pm 0{,}013\) \\
+\(0{,}8\) & \(-15\) & \(0{,}323 \pm 0{,}015\) \\
+\(0{,}9\) & \(-29\) & \(0{,}374 \pm 0{,}017\) \\}
+\newcommand*{\CalibrationRows}{\(0{,}10\) & \(0{,}8\) & \(0{,}107\) \\
+\(0{,}20\) & \(1{,}5\) & \(0{,}200\) \\
+\(0{,}30\) & \(2{,}2\) & \(0{,}293\) \\
+\(0{,}40\) & \(2{,}9\) & \(0{,}387\) \\
+\(0{,}50\) & \(3{,}7\) & \(0{,}493\) \\
+\(0{,}60\) & \(4{,}3\) & \(0{,}573\) \\
+\(0{,}70\) & \(5{,}1\) & \(0{,}680\) \\
+\(0{,}80\) & \(5{,}7\) & \(0{,}760\) \\
+\(0{,}90\) & \(6{,}3\) & \(0{,}840\) \\
+\(1{,}00\) & \(6{,}9\) & \(0{,}920\) \\
+\(1{,}10\) & \(7{,}4\) & \(0{,}987\) \\
+\(1{,}20\) & \(7{,}8\) & \(1{,}040\) \\
+\(1{,}30\) & \(8{,}1\) & \(1{,}080\) \\
+\(1{,}40\) & \(8{,}4\) & \(1{,}120\) \\
+\(1{,}50\) & \(8{,}6\) & \(1{,}147\) \\
+\(1{,}62\) & \(8{,}9\) & \(1{,}187\) \\}
+\newcommand*{\ReverseRows}{\(0{,}00\) & \(-29\) & \(-46\) & \(8{,}5\) & \(0{,}0\) \\
+\(0{,}24\) & \(65\) & \(-133\) & \(99{,}0\) & \(90{,}5\) \\
+\(0{,}40\) & \(123\) & \(-192\) & \(157{,}5\) & \(149{,}0\) \\
+\(0{,}60\) & \(192\) & \(-264\) & \(228{,}0\) & \(219{,}5\) \\
+\(0{,}79\) & \(255\) & \(-328\) & \(291{,}5\) & \(283{,}0\) \\
+\(1{,}07\) & \(331\) & \(-408\) & \(369{,}5\) & \(361{,}0\) \\
+\(1{,}28\) & \(369\) & \(-445\) & \(407{,}0\) & \(398{,}5\) \\
+\(1{,}54\) & \(400\) & \(-478\) & \(439{,}0\) & \(430{,}5\) \\}
