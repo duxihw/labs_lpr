@@ -23,7 +23,7 @@ import pandas as pd
 LAB_DIR = Path(__file__).resolve().parents[1]
 RAW_DIR = LAB_DIR / "data" / "raw"
 PROC_DIR = LAB_DIR / "data" / "processed"
-FIG_DIR = LAB_DIR / "report" / "images"
+FIG_DIR = LAB_DIR / "report" / "img"
 
 
 # --------------------------------------------------------------------------
@@ -158,8 +158,8 @@ class Results:
             unit: str = "", comment: str = "") -> None:
         self.rows.append({
             "quantity": quantity,
-            "value": None if not np.isfinite(value) else round(float(value), 6),
-            "sigma": None if not np.isfinite(sigma) else round(float(sigma), 6),
+            "value": None if not np.isfinite(value) else float(value),
+            "sigma": None if not np.isfinite(sigma) else float(sigma),
             "unit": unit,
             "comment": comment,
         })
